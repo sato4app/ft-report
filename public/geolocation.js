@@ -6,7 +6,10 @@
 //   記録中は画面スリープを防ぎ、起動時画面へ移っても記録を続ける。表示中の経路は端末に保存する。
 // - 写真の撮影地点(撮影時の位置の取り直し)。写真そのものは photos.js が持ち、経路とは結び付けない。
 import * as L from 'leaflet';
-import { getMap, buildMarkerIcon, ensureMapSize, fitMapToLatLngs } from './map.js';
+import {
+  getMap, buildMarkerIcon, ensureMapSize, fitMapToLatLngs,
+  isOneFingerZooming, setOneFingerZoomAroundCenter
+} from './map.js';
 import { saveLatestTrack, loadLatestTrack, clearLatestTrack } from './db.js';
 import { PHOTO_POSITION_TIMEOUT_MS } from './config.js';
 import { t } from './i18n.js';
@@ -705,6 +708,9 @@ function shouldFollowMap() {
   return followCurrentLocation && showCurrentMarker && onMapView;
 }
 
+// 追従中の1本指ズームは、触れた地点ではなく現在地のある画面中央を中心にする(map.js 参照)
+setOneFingerZoomAroundCenter(shouldFollowMap);
+
 // 直近の位置が「現在地」として使えるほど新しいか。
 // 監視を止めているあいだは位置が更新されないため、再開直後は古い位置が残っている
 function isLastFixFresh() {
@@ -717,6 +723,9 @@ function isLastFixFresh() {
 function moveMapToCurrentLocation(latlng) {
   const map = getMap();
   if (!map) return;
+  // 1本指ズームの最中は寄せない(途中のズームレベルは整数でないため、寄せると拡大縮小が乱れる)。
+  // 指を離した後の次の測位で寄せ直す
+  if (isOneFingerZooming()) return;
   // 寄せる前に地図の大きさを測り直す。覚え違いのまま寄せると、Leaflet が中央だと
   // 思う座標が実際の中央からずれ、現在地が画面の外に置かれる(ensureMapSize 参照)。
   // 回転時のイベントを取りこぼしても、次の位置更新でここが直してくれる。
