@@ -441,6 +441,8 @@ const DICT = {
   'info.countRoutes': { ja: 'ルート', en: 'Routes' },
   'info.countSpots': { ja: 'スポット', en: 'Spots' },
   'info.countClosures': { ja: '通行止め', en: 'Closures' },
+  // バージョン履歴(見出し)。中身の文言は version-history.js
+  'info.versionHistory': { ja: 'バージョン履歴', en: 'Version History' },
   'info.messages': { ja: 'メッセージ履歴', en: 'Message History' },
   // ご利用の注意・よくある質問(情報・言語/Info & Language の見出し)。中身の文言は faq-text.js
   'info.notices': { ja: 'ご利用の注意', en: 'Before You Go' },

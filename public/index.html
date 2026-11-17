@@ -436,7 +436,7 @@
       <div class="modal-body">
         <section class="info-section">
 
-          <!-- 5項目とも、見出しのボタンを押すと下に開く(開くたびに閉じた状態から始める)。
+          <!-- 6項目とも、見出しのボタンを押すと下に開く(開くたびに閉じた状態から始める)。
                見出しと中身を info-item で包むのは、開いた見出しをその項目の範囲でだけ
                本文の上端に残す(position: sticky)ため -->
           <!-- ご利用の注意・よくある質問。中身は faq.js が faq-text.js から
@@ -525,6 +525,17 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- バージョン履歴。中身は version-history.js が組み立てる(初回に開いたときの1回だけ)。
+               記載内容の正本は public/version-history.js の VERSION_HISTORY -->
+          <div class="info-item">
+            <button type="button" class="info-disclosure" id="btnInfoHistory" aria-expanded="false" aria-controls="infoHistoryBody">
+              <span class="info-disclosure-text" data-i18n="info.versionHistory">バージョン履歴</span>
+            </button>
+            <div class="info-collapse" id="infoHistoryBody" hidden>
+              <div id="versionHistory"></div>
             </div>
           </div>
 

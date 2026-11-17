@@ -1870,7 +1870,8 @@ body.view-state-map .leaflet-control-container {
   background: #fff;
 }
 
-/* 押すと下に開く5項目(ご利用の注意・よくある質問・メッセージ履歴・バージョン情報・このアプリについて)。
+/* 押すと下に開く6項目(ご利用の注意・よくある質問・メッセージ履歴・バージョン情報・バージョン履歴・
+   このアプリについて)。
    設定ではなく情報の表示なので、スイッチではなく開閉の印(下向き / 上向き)の付いた見出しにする。
    よくある質問の質問(.faq-q)も同じ形の印で開閉するため、こちらは文字を大きくし、項目の間に
    区切り線を入れて、外側の見出しだと分かるようにする */
@@ -2078,6 +2079,39 @@ body.view-state-map .leaflet-control-container {
   flex: none;
   padding: 0.75rem 1.5rem;
   justify-content: flex-start;
+}
+
+/* バージョン履歴(情報・言語/Info & Language 内)。中身は version-history.js が組み立てる。
+   日付を左、内容を右に並べ、内容が長いときは内容の側だけで折り返す(メッセージ履歴と同じ並べ方) */
+.version-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.version-history-list li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.45rem 1rem;
+  font-size: 0.9rem;
+}
+
+.version-history-list li + li {
+  border-top: 1px solid #eee;
+}
+
+.version-history-date {
+  flex-shrink: 0;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+}
+
+.version-history-text {
+  flex: 1;
+  color: #222;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 /* 履歴消去ボタンを右寄せに配置 */

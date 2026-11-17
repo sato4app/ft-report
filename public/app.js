@@ -17,6 +17,7 @@
 //   qrcode.js         … QRコードの生成(外部ライブラリ非依存)
 //   guide.js          … 使い方ガイド(画面を順に案内するオーバーレイ)
 //   faq.js / faq-text.js … ご利用の注意・よくある質問(情報・言語/Info & Language で表示)
+//   version-history.js … バージョン履歴(情報・言語/Info & Language で表示)
 
 import {
   initMap, resizeMap,
@@ -68,6 +69,7 @@ import { readMarkerSettings, initMarkerSettings } from './marker-settings.js';
 import { renderQrSvg } from './qrcode.js';
 import { initGuide, openGuide, maybeAutoOpenGuide, isGuideOpen } from './guide.js';
 import { showNotices, showQuestions, getNoticeText } from './faq.js';
+import { showVersionHistory } from './version-history.js';
 
 // ===== 状態 =====
 let currentView = 'home';
@@ -94,7 +96,7 @@ const el = {
   // 情報・言語モーダル(起動画面の「情報・言語/Info & Language」から表示)
   appSettingsModal: document.getElementById('appSettingsModal'),
   languageSelect: document.getElementById('languageSelect'),
-  // 押すと下に開く5項目(見出しのボタンと、開く中身)
+  // 押すと下に開く6項目(見出しのボタンと、開く中身)
   btnInfoNotices: document.getElementById('btnInfoNotices'),
   infoNoticesBody: document.getElementById('infoNoticesBody'),
   faqNotices: document.getElementById('faqNotices'),
@@ -105,6 +107,9 @@ const el = {
   infoMessagesBody: document.getElementById('infoMessagesBody'),
   btnInfoVersion: document.getElementById('btnInfoVersion'),
   infoVersionBody: document.getElementById('infoVersionBody'),
+  btnInfoHistory: document.getElementById('btnInfoHistory'),
+  infoHistoryBody: document.getElementById('infoHistoryBody'),
+  versionHistory: document.getElementById('versionHistory'),
   btnInfoAbout: document.getElementById('btnInfoAbout'),
   infoAboutBody: document.getElementById('infoAboutBody'),
   // 外部サイトを開く確認(このアプリについて のリンクから表示)
@@ -412,6 +417,8 @@ function bindEvents() {
   bindInfoDisclosure(el.btnInfoMessages, el.infoMessagesBody, renderMessageList);
   // バージョン情報: 開いたら、その時点の値を反映する
   bindInfoDisclosure(el.btnInfoVersion, el.infoVersionBody, showVersionInfo);
+  // バージョン履歴: 初めて開いたときだけ中身を組み立てる
+  bindInfoDisclosure(el.btnInfoHistory, el.infoHistoryBody, () => showVersionHistory(el.versionHistory));
   bindInfoDisclosure(el.btnInfoAbout, el.infoAboutBody);
   // このアプリについて の外部サイトへのリンク: すぐには開かず、全画面の確認画面を出す。
   // キャンセル(data-close-modal)なら開かずに情報・言語モーダルへ戻る。
@@ -854,9 +861,9 @@ function showView(name) {
 
 // ===== モーダル =====
 // 情報・言語モーダル(起動画面の「情報・言語/Info & Language」から表示)。
-// ご利用の注意・よくある質問・メッセージ履歴・バージョン情報・このアプリについて・
+// ご利用の注意・よくある質問・メッセージ履歴・バージョン情報・バージョン履歴・このアプリについて・
 // 言語/Language をまとめる(マーカーの設定はマップ画面メニューから開く)。
-// 5項目は設定ではなく情報の表示なので、スイッチではなく押すと下に開く見出しにしている。
+// 6項目は設定ではなく情報の表示なので、スイッチではなく押すと下に開く見出しにしている。
 
 // 見出しのボタンと中身の開閉状態をそろえる(要素が無い端末でも落ちないようにする)
 function setInfoDisclosure(button, body, open) {
@@ -892,12 +899,13 @@ function openQuestions() {
 }
 
 function openAppSettingsModal() {
-  // 5項目は開くたびに必ず閉じた状態へ戻す。開いたままだと、次に開いたときに長い内容が
+  // 6項目は開くたびに必ず閉じた状態へ戻す。開いたままだと、次に開いたときに長い内容が
   // 広がった状態で始まり、その下にある「言語の設定」までスクロールが必要になるため
   setInfoDisclosure(el.btnInfoNotices, el.infoNoticesBody, false);
   setInfoDisclosure(el.btnInfoFaq, el.infoFaqBody, false);
   setInfoDisclosure(el.btnInfoMessages, el.infoMessagesBody, false);
   setInfoDisclosure(el.btnInfoVersion, el.infoVersionBody, false);
+  setInfoDisclosure(el.btnInfoHistory, el.infoHistoryBody, false);
   setInfoDisclosure(el.btnInfoAbout, el.infoAboutBody, false);
 
   // 履歴は開いたときにすぐ見えるよう事前に描画しておく

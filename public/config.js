@@ -111,6 +111,9 @@ export const APP_UPDATE_WORKER_WAIT_MS = 5000;
 // 隠しボタンを続けて DOWNLOAD_DETAIL_TAP_COUNT 回タップしたときだけ出す(tiles.js)。
 // 更新バナー(差分のみ更新 / すべて更新)の対象は、false の間は Z=14〜17 に限る。
 // 公開側(タイル一覧の z18_optional)はそのまま配信しているので、true にすれば全員に公開できる。
+// 隠しボタンは開発者用の一時措置。一般に公開するときは true にしたうえで隠しボタンを外す
+// (index.html の #downloadSecretTap と .download-intro、style.css の .download-secret-tap、
+//  tiles.js の onSecretTap と、下の DOWNLOAD_DETAIL_TAP_*)。
 export const DOWNLOAD_DETAIL_ENABLED = false;
 // 隠しボタンのタップ回数と、続けてのタップとみなす間隔[ms](前のタップからこの時間を超えたら数え直す)
 export const DOWNLOAD_DETAIL_TAP_COUNT = 5;

@@ -4,7 +4,7 @@
 // - app-shell-{日付}.{連番}: アプリシェル(HTML/CSS/JS、CDN、アイコン)。取得戦略は handleShellRequest。
 // 公開API(/api/*)は横取りしない。取得とキャッシュはアプリ側(published-data.js)が version を見て行う。
 
-const SHELL_CACHE = 'app-shell-2026-11-17.2';
+const SHELL_CACHE = 'app-shell-2026-11-17.3';
 const TILE_CACHE_PREFIX = 'gsi-';
 const SHELL_CACHE_PREFIX = 'app-shell-';
 
@@ -43,6 +43,7 @@ const SHELL_LOCAL_PATHS = [
   './guide.js',
   './faq.js',
   './faq-text.js',
+  './version-history.js',
   './manifest.webmanifest',
   './manifest-en.webmanifest',   // スマホの言語が日本語以外のときの manifest(index.html で切替)
   './icons/icon-192-v2.png',
