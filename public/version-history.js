@@ -2,9 +2,9 @@
 // 情報・言語/Info & Language の「バージョン履歴」で表示する内容で、**本ファイルの VERSION_HISTORY が
 // この記載内容の正本**。履歴を足す・直すときは VERSION_HISTORY だけを直す(描画のコードは触らなくてよい)。
 //
-// 1件 = { date: 'YYYY/MM/DD', text: { ja, en } }。
+// 1件 = { date: 'YYYY-MM-DD', text: { ja, en } }。
 // - 表示は配列の順(上から古い順)。新しい履歴は末尾に足す。
-// - date は書いたとおりに表示する(日英共通)。
+// - date は YYYY-MM-DD 形式で書き、書いたとおりに表示する(日英共通。言語で書き分けない)。
 // - en が無いときは ja を出す(faq.js の pick と同じ)。英文中の画面の名前(「Take Photos」など)は、
 //   i18n.js の英語表記と必ず一致させること(英語表示の利用者が画面上で項目を見つけられるように)。
 
@@ -12,15 +12,15 @@ import { getLang } from './i18n.js';
 
 export const VERSION_HISTORY = [
   {
-    date: '2026/05/07',
+    date: '2026-05-07',
     text: { ja: 'deploy実施(αテスト開始)', en: 'Deployed (alpha testing began)' }
   },
   {
-    date: '2026/10/15',
+    date: '2026-10-15',
     text: { ja: '初期公開バージョン(βテスト開始)', en: 'First public version (beta testing began)' }
   },
   {
-    date: '2026/11/18',
+    date: '2026-11-18',
     text: { ja: '機能追加: 写真を撮影', en: 'New feature: Take Photos' }
   }
 ];
