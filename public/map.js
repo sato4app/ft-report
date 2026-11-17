@@ -184,6 +184,8 @@ function enableOneFingerZoom(map) {
     gesture = null;
     oneFingerZooming = false;
     if (g.dragWasEnabled) map.dragging.enable();
+    L.DomUtil.enableTextSelection();
+    L.DomUtil.enableImageDrag();
     if (!g.zooming) return false;
     cancelAnimationFrame(frame);
     const zoom = map._limitZoom(g.zoom);
@@ -216,6 +218,11 @@ function enableOneFingerZoom(map) {
         zooming: false
       };
       if (gesture.dragWasEnabled) map.dragging.disable();
+      // 地図の移動(Leaflet の Draggable)は触れている間の文字選択・画像のドラッグを止めているが、
+      // ここではその移動を止めたため、同じ抑止を自分でかける(指を離すまで)。
+      // 2回目に触れたまま止めると長押しとみなされ、文字が選択されてコピー・翻訳のメニューが出るため
+      L.DomUtil.disableTextSelection();
+      L.DomUtil.disableImageDrag();
       return;
     }
     lastTap = null;
@@ -259,6 +266,11 @@ function enableOneFingerZoom(map) {
     tapStart = null;
     lastTap = null;
     finish();
+  }, { capture: true });
+
+  // 2回目に触れたまま止めたときの長押しメニュー(画像の保存など)も出さない
+  container.addEventListener('contextmenu', (e) => {
+    if (gesture) e.preventDefault();
   }, { capture: true });
 }
 
