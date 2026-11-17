@@ -106,10 +106,15 @@ export const APP_UPDATE_DOWNLOAD_TIMEOUT_MS = 90000;
 // 更新要求後に新しい Service Worker(ダウンロードの実行役)が現れるのを待つ上限。
 export const APP_UPDATE_WORKER_WAIT_MS = 5000;
 
-// 「詳細地図データ(Z=18)を含む」トグルを出して、Z=18 もダウンロードできるようにするか。
-// false の間はダウンロード対象を Z=14〜17 に限り、トグルを非表示にする。
-// 公開側(タイル一覧の z18_optional)はそのまま配信しているので、true に戻すだけで復活できる。
+// 「詳細な地図データ(z=18)も含める」トグルを常に出して、だれでも Z=18 をダウンロードできるようにするか。
+// false の間(当面は一般には公開しない)はトグルを隠し、ダウンロード画面の説明文の上に重ねた
+// 隠しボタンを続けて DOWNLOAD_DETAIL_TAP_COUNT 回タップしたときだけ出す(tiles.js)。
+// 更新バナー(差分のみ更新 / すべて更新)の対象は、false の間は Z=14〜17 に限る。
+// 公開側(タイル一覧の z18_optional)はそのまま配信しているので、true にすれば全員に公開できる。
 export const DOWNLOAD_DETAIL_ENABLED = false;
+// 隠しボタンのタップ回数と、続けてのタップとみなす間隔[ms](前のタップからこの時間を超えたら数え直す)
+export const DOWNLOAD_DETAIL_TAP_COUNT = 5;
+export const DOWNLOAD_DETAIL_TAP_INTERVAL_MS = 1000;
 
 // ===== メッセージ履歴 =====
 export const MESSAGE_LOG_MAX = 100;
@@ -170,6 +175,9 @@ export const MARKER_TYPES = [
     locked: ['color', 'shape'], note: 1 },
   { key: 'closureDifficult', color: '#FACC15', shape: 'warning', size: 20,
     locked: ['color', 'shape'], note: 1 },
+  // 現在地点(「現在地点をマーカー表示」で出す青丸)。
+  // 既定値はマーカー設定に入れる前の見た目(青の丸・白の縁を含む直径16px)に合わせる
+  { key: 'currentLocation', color: '#1D4ED8', shape: 'circle', size: 16 },
   // 移動記録関連(表示順は移動記録経路の上)。色は移動記録経路と同じ既定値。
   { key: 'trackStart', color: '#000080', shape: 'square', size: 16 },     // 移動記録開始点
   { key: 'trackCurrent', color: '#000080', shape: 'triangle', size: 20 }, // 移動記録現在地点

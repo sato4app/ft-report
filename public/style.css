@@ -606,7 +606,8 @@ textarea {
 }
 
 /* 現在地マーカーの表示切替(ズームボタンの上)。枠・大きさは leaflet-bar に任せ、
-   アイコンの色だけで状態を示す。ON は現在地マーカー(青丸)と同じ青、OFF は灰色 */
+   アイコンの色だけで状態を示す。ON は現在地マーカー(青丸)の既定の色と同じ青、OFF は灰色
+   (マーカーの設定で現在地点の色を変えても、このボタンの色は変えない) */
 .leaflet-right .current-marker-toggle a {
   display: flex;
   align-items: center;
@@ -1646,10 +1647,32 @@ body.view-state-map .leaflet-control-container {
   border-bottom: 1px solid #eee;
 }
 
-/* 「詳細地図データ(Z=18)を含む」トグル。.toggle の display: flex が hidden 属性より
-   優先されるため、非表示を明示する(Z=18 のダウンロードを止めている間は常に非表示) */
+/* 「詳細な地図データ(z=18)も含める」トグル。.toggle の display: flex が hidden 属性より
+   優先されるため、非表示を明示する(隠しボタンで出すまでは非表示) */
 .download-detail[hidden] {
   display: none;
+}
+
+/* 説明文と、その上に重ねる隠しボタン(Z=18 を含めるトグルを出す) */
+.download-intro {
+  position: relative;
+}
+
+/* 隠しボタン: 透明で、説明文の2行(.modal-subtitle の上下の余白を除いた文字の部分)に重ねる。
+   左端と幅は「ダウンロード」ボタン(.button-group-row の左半分。左右の余白 1rem・間隔 0.5rem)に揃える。
+   存在が見た目に出ないよう、タップ時の色付け・文字の選択・長押しのメニューを止め、
+   続けてのタップが画面の拡大(ダブルタップ)に取られないようにする */
+.download-secret-tap {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.5rem;
+  left: 1rem;
+  width: calc((100% - 2.5rem) / 2);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .info-row {

@@ -28,7 +28,7 @@ import {
 } from './map.js';
 import {
   setLocationActiveForMapView, setCurrentMarkerVisible, setFollowCurrentLocation,
-  showCurrentLocationSpot,
+  showCurrentLocationSpot, setCurrentLocationStyle,
   setTrackStyle, setTrackStartStyle, setTrackCurrentStyle,
   startTrackRecording, stopTrackRecording, getTrackStats, getTrackStatsList,
   getTrackSegments, clearTrack, loadTrackSegments, fitMapToTrack, restoreSavedTrack,
@@ -292,6 +292,8 @@ async function init() {
       logStartupVersionCheckOnce();
     }
   });
+  // 現在地マーカー(青丸)は測位のたびに作るため、現在地の監視(マップ画面に入ったとき)より前に設定する
+  setCurrentLocationStyle(markerSettings.currentLocation);
   setTrackStyle(markerSettings.track);
   setTrackStartStyle(markerSettings.trackStart);
   setTrackCurrentStyle(markerSettings.trackCurrent);

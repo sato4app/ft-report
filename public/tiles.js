@@ -8,7 +8,8 @@
 import {
   TILE_CACHE_PREFIX, TILE_URL_BASE,
   CONCURRENCY, MAX_RETRIES, VERSION_STORAGE_KEY,
-  TILE_AVG_KB_BY_Z, TILE_AVG_KB_FALLBACK, DOWNLOAD_DETAIL_ENABLED
+  TILE_AVG_KB_BY_Z, TILE_AVG_KB_FALLBACK,
+  DOWNLOAD_DETAIL_ENABLED, DOWNLOAD_DETAIL_TAP_COUNT, DOWNLOAD_DETAIL_TAP_INTERVAL_MS
 } from './config.js';
 import { savePackage, listPackages, clearPackages, deletePackage } from './db.js';
 import { logHistory } from './messages.js';
@@ -25,11 +26,19 @@ let pendingManifest = null;
 // キャッシュ済みタイルURL集合(サイズ行の「更新分」用。取り直すのは refreshDownloadInfo だけ)。
 // 走査できなかったときは null にして「更新分」を出さない。
 let cachedTileUrls = null;
+// 「詳細な地図データ(z=18)も含める」トグルを表示しているか。一般には公開していないため、
+// DOWNLOAD_DETAIL_ENABLED が false の間は隠しボタン(onSecretTap)で出すまで false。
+// 一度出したら、ページを開いている間(再読み込みまで)は出したままにする
+let detailRevealed = DOWNLOAD_DETAIL_ENABLED;
+// 隠しボタンを続けてタップした回数と、直前のタップの時刻[ms]
+let secretTapCount = 0;
+let secretLastTapAt = 0;
 
 // ===== DOM要素 =====
 const el = {
   statusMessage: document.getElementById('statusMessage'),
   downloadModal: document.getElementById('downloadModal'),
+  downloadSecretTap: document.getElementById('downloadSecretTap'),
   downloadDetailRow: document.getElementById('downloadDetailRow'),
   toggleDetail: document.getElementById('toggleDetail'),
   btnDownloadMap: document.getElementById('btnDownloadMap'),
@@ -48,9 +57,11 @@ const el = {
 export function initTilesEvents() {
   el.btnDownloadMap.addEventListener('click', onDownloadMap);
   el.btnClearCache.addEventListener('click', onClearCache);
-  // 「詳細地図データ(Z=18)を含む」トグルは Z=18 のダウンロードを許可しているときだけ出す。
+  // 「詳細な地図データ(z=18)も含める」トグルは、公開している(DOWNLOAD_DETAIL_ENABLED)か、
+  // 隠しボタンで出したときだけ表示する。
   // 対象レイヤーが変わるとサイズも変わる(キャッシュ済み集合は取り直さない)
-  el.downloadDetailRow.hidden = !DOWNLOAD_DETAIL_ENABLED;
+  el.downloadDetailRow.hidden = !detailRevealed;
+  if (!detailRevealed) el.downloadSecretTap.addEventListener('click', onSecretTap);
   el.toggleDetail.addEventListener('change', updateSizeRow);
   el.btnUpdateDiff.addEventListener('click', () => runTileJob(() => startManifestUpdate('diff')));
   el.btnUpdateAll.addEventListener('click', () => runTileJob(() => startManifestUpdate('all')));
@@ -177,20 +188,39 @@ export function openDownloadModal() {
   refreshDownloadInfo();
 }
 
-// 「詳細地図データ(Z=18)を含む」トグルで決まるダウンロード対象レイヤー。
-// Off(既定) → z14〜17(基本)、On → z14〜18(詳細を含む)。
-// Z=18 のダウンロードを止めている間(DOWNLOAD_DETAIL_ENABLED = false)は常に z14〜17
+// 隠しボタン(ダウンロード画面の説明文の上に重ねた透明な領域)のタップ。
+// 続けて DOWNLOAD_DETAIL_TAP_COUNT 回タップしたら「詳細な地図データ(z=18)も含める」トグルを出す。
+// 前のタップから DOWNLOAD_DETAIL_TAP_INTERVAL_MS を超えて空いたら1回目から数え直す
+function onSecretTap() {
+  if (detailRevealed) return;
+  const now = Date.now();
+  secretTapCount = (now - secretLastTapAt <= DOWNLOAD_DETAIL_TAP_INTERVAL_MS) ? secretTapCount + 1 : 1;
+  secretLastTapAt = now;
+  if (secretTapCount < DOWNLOAD_DETAIL_TAP_COUNT) return;
+  detailRevealed = true;
+  el.downloadDetailRow.hidden = false;
+}
+
+// 「詳細な地図データ(z=18)も含める」トグルで決まるダウンロード対象レイヤー。
+// Off(既定) → z14〜17(基本)、On → z14〜18(詳細を含む)。トグルを出していない間は常に z14〜17。
+// 端末に保存済みのタイルは取り直さない(runJobs)ため、z14〜17 をダウンロード済みなら
+// On で取りに行くのは z18 の分だけになる
 const BASE_LAYER_KEYS = ['z14_default', 'z15_default', 'z16_default', 'z17_default'];
 const DETAIL_LAYER_KEY = 'z18_optional';
 
+function isDetailSelected() {
+  return detailRevealed && el.toggleDetail.checked;
+}
+
 function selectedLayerKeys() {
-  return DOWNLOAD_DETAIL_ENABLED && el.toggleDetail.checked
+  return isDetailSelected()
     ? [...BASE_LAYER_KEYS, DETAIL_LAYER_KEY]
     : [...BASE_LAYER_KEYS];
 }
 
 // 更新バナー(差分のみ更新 / すべて更新)の対象レイヤー。
-// Z=18 を許可しているときはマニフェストの全レイヤー(null)、止めている間は z14〜17 のみ
+// Z=18 を公開しているときはマニフェストの全レイヤー(null)、公開していない間は z14〜17 のみ
+// (隠しボタンで Z=18 をダウンロードした端末も、z18 は更新しない。保存済みのタイルはそのまま使える)
 function updatableLayerKeys() {
   return DOWNLOAD_DETAIL_ENABLED ? null : [...BASE_LAYER_KEYS];
 }
@@ -544,6 +574,8 @@ function updateVersionRow() {
 
 // ダウンロード対象(選択中レイヤー)のサイズと、まだ端末に無い分(更新分)の概算を表示する。
 // サイズ＝更新分(未ダウンロード)のときは同じ数値が並ぶだけなのでサイズのみを出す。
+// Z=18 を含めるトグルがオンのときは、まだ端末に無い分を「追加分」と呼ぶ
+// (z18 は初めて取りに行く分で、「更新」ではないため)。
 function updateSizeRow() {
   const jobs = buildJobs(selectedLayerKeys());
   if (jobs.length === 0) {
@@ -556,12 +588,13 @@ function updateSizeRow() {
     ? jobs.filter((job) => !cachedTileUrls.has(tileUrl(job)))
     : jobs;
 
+  const detail = isDetailSelected();
   if (pending.length === jobs.length) {
     el.downloadSizeValue.textContent = t('download.size', { size });
   } else if (pending.length === 0) {
-    el.downloadSizeValue.textContent = t('download.sizeNoDelta', { size });
+    el.downloadSizeValue.textContent = t(detail ? 'download.sizeNoAddition' : 'download.sizeNoDelta', { size });
   } else {
-    el.downloadSizeValue.textContent = t('download.sizeWithDelta', {
+    el.downloadSizeValue.textContent = t(detail ? 'download.sizeWithAddition' : 'download.sizeWithDelta', {
       size, delta: formatMB(estimateMB(pending))
     });
   }

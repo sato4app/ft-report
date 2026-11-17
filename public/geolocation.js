@@ -726,19 +726,36 @@ function moveMapToCurrentLocation(latlng) {
   recenterWithoutAnimation = false;
 }
 
-// 現在地マーカー(青丸)の見た目。
-const CURRENT_MARKER_STYLE = {
-  radius: 7,
-  color: '#ffffff',
-  weight: 2,
-  fillColor: '#1d4ed8',
-  fillOpacity: 0.95
-};
+// 現在地マーカー(青丸)の見た目。色・形状・大きさはマーカー設定の「現在地点」に従う
+// (setCurrentLocationStyle。既定値は config.js の MARKER_TYPES)。
+let currentLocationStyle = null;
+// 他のマーカー(緊急ポイント・移動記録現在地点の三角など)より下に描くための zIndexOffset。
+// Leaflet のマーカーは画面の上下位置で重なり順が決まり、同じ位置では後から作った方が上になる。
+// 記録中は三角が同じ位置に来るため、青丸を作り直すと三角を覆ってしまう。それを避けるため、
+// 地図の大きさ(数千px)より十分大きく下げて、常に他のマーカーの下に置く
+const CURRENT_MARKER_Z_OFFSET = -100000;
+
+function currentMarkerIcon() {
+  return buildMarkerIcon(currentLocationStyle, {
+    fallbackShape: 'circle',
+    fallbackColor: '#1d4ed8',
+    fallbackSize: 16
+  });
+}
+
+// 現在地マーカー(青丸)のスタイル。表示中なら即時反映
+export function setCurrentLocationStyle(style) {
+  currentLocationStyle = style;
+  if (currentLocationMarker) currentLocationMarker.setIcon(currentMarkerIcon());
+}
 
 // 現在地マーカー(青丸)の生成・更新
 function showOrUpdateCurrentMarker(latlng) {
   if (!currentLocationMarker) {
-    currentLocationMarker = L.circleMarker(latlng, CURRENT_MARKER_STYLE).addTo(getMap());
+    currentLocationMarker = L.marker(latlng, {
+      icon: currentMarkerIcon(),
+      zIndexOffset: CURRENT_MARKER_Z_OFFSET
+    }).addTo(getMap());
     currentLocationMarker.bindPopup('現在地');
   } else {
     currentLocationMarker.setLatLng(latlng);

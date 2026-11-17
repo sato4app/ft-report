@@ -1,5 +1,5 @@
 // マーカー設定モジュール
-// 地図上の各マーカー(緊急ポイント/ルート/スポット/移動記録関連/写真撮影地点等)の色・形状・サイズを
+// 地図上の各マーカー(緊急ポイント/ルート/スポット/現在地点/移動記録関連/写真撮影地点等)の色・形状・サイズを
 // 設定UIで編集し、localStorage に保存して地図へ反映する。
 
 import {
@@ -11,7 +11,9 @@ import {
   setClosureClosedStyle, setClosureDifficultStyle,
   shapeToSVG
 } from './map.js';
-import { setTrackStyle, setTrackStartStyle, setTrackCurrentStyle } from './geolocation.js';
+import {
+  setCurrentLocationStyle, setTrackStyle, setTrackStartStyle, setTrackCurrentStyle
+} from './geolocation.js';
 import { setPhotoStyle } from './photos.js';
 import { t } from './i18n.js';
 
@@ -261,6 +263,7 @@ function applyMarkerSettingToMap(key, style) {
   else if (key === 'spot') setHikingSpotStyle(style);
   else if (key === 'closureClosed') setClosureClosedStyle(style);
   else if (key === 'closureDifficult') setClosureDifficultStyle(style);
+  else if (key === 'currentLocation') setCurrentLocationStyle(style);
   else if (key === 'track') setTrackStyle(style);
   else if (key === 'trackStart') setTrackStartStyle(style);
   else if (key === 'trackCurrent') setTrackCurrentStyle(style);

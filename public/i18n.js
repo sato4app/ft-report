@@ -351,9 +351,16 @@ const DICT = {
     en: 'Size: approx. {size} MB (update approx. {delta} MB)'
   },
   'download.sizeNoDelta': { ja: 'サイズ：約{size}MB（更新分 なし）', en: 'Size: approx. {size} MB (no update needed)' },
-  // Z=18 を含めるトグル。config.js の DOWNLOAD_DETAIL_ENABLED が false の間は表示しない
-  // (復活に備えて残している)
-  'download.includeDetail': { ja: '詳細地図データ(Z=18)を含む', en: 'Include Detailed Map Data (Z=18)' },
+  // Z=18 を含めるトグルがオンのときのサイズ行。( )内はまだ端末に無いタイル、つまり追加でダウンロードする分
+  'download.sizeWithAddition': {
+    ja: 'サイズ：約{size}MB（追加分 約{delta}MB）',
+    en: 'Size: approx. {size} MB (approx. {delta} MB to add)'
+  },
+  'download.sizeNoAddition': { ja: 'サイズ：約{size}MB（追加分 なし）', en: 'Size: approx. {size} MB (nothing to add)' },
+  // Z=18 を含めるトグル。一般には公開していないため、ダウンロード画面の隠しボタンで出す(tiles.js)。
+  // 「ダウンロード」ボタンを押したときの対象に Z=18 を加えるものなので、「〜をダウンロード」ではなく
+  // 「も含める」とする(Z=14〜17 もあわせてダウンロードされることが分かるように)
+  'download.includeDetail': { ja: '詳細な地図データ(z=18)も含める', en: 'Include Detailed Map Data (z=18)' },
   'download.startBtn': { ja: 'ダウンロード', en: 'Download' },
   'download.manifestLoadFailed': { ja: 'マニフェスト読込失敗: {message}', en: 'Failed to load manifest: {message}' },
   'download.noLayers': { ja: 'マニフェストにレイヤー情報がありません', en: 'The manifest has no layer information' },
@@ -665,6 +672,7 @@ const DICT = {
   'markerType.spot': { ja: 'スポット', en: 'Spot' },
   'markerType.closureClosed': { ja: '通行止め地点', en: 'Closed Point' },
   'markerType.closureDifficult': { ja: '通行困難地点', en: 'Difficult Point' },
+  'markerType.currentLocation': { ja: '現在地点', en: 'Current Location' },
   'markerType.trackStart': { ja: '移動記録開始点', en: 'Track Start Point' },
   'markerType.trackCurrent': { ja: '移動記録現在地点', en: 'Track Current Point' },
   'markerType.track': { ja: '移動記録経路', en: 'Track Route' },
