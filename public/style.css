@@ -514,6 +514,22 @@ textarea {
   pointer-events: none;
 }
 
+/* 文字を選ばせない: 地図の画面に重ねて出すもの(マップ画面の上部ボタン・時刻・メニュー、
+   トースト、更新バナー)と、どの画面でもボタン・トグルの文字。
+   長押しで文字が選ばれ、拡大鏡やコピー・調べる・翻訳のメニューが出るのを防ぐ。
+   地図(#map、別に指定)の上で長押ししても、iPhone は近くの選べる文字(≡ の記号など)を
+   選ぶことがあるため、地図に重なるものはまとめて対象にする。
+   文字の入力欄はモーダルの中にだけあり、ここには含まない(含めると入力できなくなる端末がある) */
+.view-map,
+.toast,
+.update-banner,
+button,
+label {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* マップビューの操作要素(浮きボタン・パネル・記録ボタン群)はクリック可能に。
    .view-map は pointer-events: none のため、操作要素ごとに auto を明示する必要がある。
    .map-top-actions は孫要素(div>button)なので div 自体を auto にする。 */

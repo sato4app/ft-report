@@ -244,6 +244,8 @@ async function init() {
   initStep('restoreMapToggles', restoreMapToggles);
   // ページの拡大・ずれでマップ画面の上部ボタンが画面外へ出ないようにする
   initStep('guardPageViewport', guardPageViewport);
+  // 文字を入力した後、iPhone を振ると出る「取り消す - 入力」を出さないようにする
+  initStep('watchTypingUndoHistory', watchTypingUndoHistory);
 
   // 開いている間にブラウザが新しい版へ入れ替えたら知らせる(登録より前に見張りを始める。
   // 登録をきっかけにブラウザが更新を確かめ、すぐ入れ替わることがあるため)
@@ -777,6 +779,35 @@ function guardPageViewport() {
     if (active instanceof HTMLElement && isKeyboardInput(active)) return;
     resetPageScroll();
   }, { capture: true, passive: true });
+}
+
+// ===== 振って取り消し(iPhone)の防止 =====
+// iPhone は本体を振ると、ページで入力した文字を取り消すか尋ねる(「取り消す - 入力」)。
+// 入力欄から離れた後もページを開いている間は尋ねるため、移動経路の記録中(画面が消えない)に
+// ポケットへ入れて歩くと、揺れで出てしまう。Web からこの機能を止める手段は無いので、
+// 入力欄から離れたら取り消しの履歴を消して、尋ねる対象を無くす。
+// 履歴は JavaScript から直接は消せないが、iPhone のブラウザ(WebKit)はページ内の iframe を
+// 外すとき、ページ全体の取り消しの履歴を消す(FrameLoader::closeURL)。そこで空の iframe を
+// 置いてすぐ外す。ほかのブラウザでは履歴は残るが、空の iframe を出し入れするだけなので害は無い
+function watchTypingUndoHistory() {
+  document.addEventListener('focusout', (e) => {
+    if (!(e.target instanceof HTMLElement) || !isKeyboardInput(e.target)) return;
+    // フォーカスが移り終わってから確かめる。別の入力欄へ移っただけなら、そこを離れるときに消す
+    setTimeout(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && isKeyboardInput(active)) return;
+      clearTypingUndoHistory();
+    }, 0);
+  });
+}
+
+function clearTypingUndoHistory() {
+  const frame = document.createElement('iframe');
+  frame.hidden = true;
+  frame.tabIndex = -1;
+  frame.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(frame);
+  frame.remove();
 }
 
 // ===== ビュー切替 =====
