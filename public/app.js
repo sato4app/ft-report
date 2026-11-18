@@ -37,6 +37,7 @@ import {
   capturePhotoPosition
 } from './geolocation.js';
 import { isCameraSupported, openCamera, closeCamera, setCameraStatus } from './camera.js';
+import { openPhotoZoom, closePhotoZoom } from './photo-zoom.js';
 import {
   setPhotoHandlers, setPhotoStyle, getPhotos, getPhotoCount, getPhoto, fitMapToPhotos,
   addPhoto, renamePhoto, deletePhoto, clearPhotos, restorePhotos, importPhotos, getPhotoThumbUrl,
@@ -194,6 +195,7 @@ const el = {
   photoViewTitle: document.getElementById('photoViewTitle'),
   btnPhotoViewPrev: document.getElementById('btnPhotoViewPrev'),
   btnPhotoViewNext: document.getElementById('btnPhotoViewNext'),
+  btnPhotoViewZoom: document.getElementById('btnPhotoViewZoom'),
   photoViewMeta: document.getElementById('photoViewMeta'),
   btnPhotoDelete: document.getElementById('btnPhotoDelete'),
   btnPhotoViewList: document.getElementById('btnPhotoViewList'),
@@ -240,6 +242,8 @@ async function init() {
   // マップのメニューのトグルを前回の状態に戻す。
   // 各トグルの反映は以降の初期化・マップ画面への切替が checked を読んで行うため、最初に行う
   initStep('restoreMapToggles', restoreMapToggles);
+  // ページの拡大・ずれでマップ画面の上部ボタンが画面外へ出ないようにする
+  initStep('guardPageViewport', guardPageViewport);
 
   // 開いている間にブラウザが新しい版へ入れ替えたら知らせる(登録より前に見張りを始める。
   // 登録をきっかけにブラウザが更新を確かめ、すぐ入れ替わることがあるため)
@@ -560,6 +564,9 @@ function bindEvents() {
   // 写真の表示の左右の矢印ボタン: 前・次の写真へ(名前は移る前に保存する)
   on(el.btnPhotoViewPrev, 'click', () => stepPhotoView(-1));
   on(el.btnPhotoViewNext, 'click', () => stepPhotoView(1));
+  // 画像・右下の虫めがね: 写真を画面いっぱいに広げて、指で拡大できる表示を開く(photo-zoom.js)
+  on(el.photoViewImage, 'click', openViewingPhotoZoom);
+  on(el.btnPhotoViewZoom, 'click', openViewingPhotoZoom);
   // 名前の欄の右のごみ箱: 表示中の写真を削除する
   on(el.btnPhotoDelete, 'click', deleteViewingPhoto);
   // 「一覧」: 写真の一覧(タイル)へ切り替える。押した写真の表示に戻る
@@ -715,8 +722,18 @@ function updateFeatureCounts() {
 // 表示領域の外(主に上)へ出てしまい「消えた」ように見える。
 // モーダルを閉じたときとマップ画面に入るときに呼び、位置と表示状態を正常化する。
 function normalizeMapChrome() {
-  // アプリ全体は body { overflow: hidden } でスクロールしない前提。
-  // 入力欄へのフォーカス等でスクロールしていたら原点に戻す
+  resetPageScroll();
+
+  // 表示状態も明示的に復帰(hidden / display の取り残し対策)
+  el.btnMapLayers.hidden = false;
+  el.btnMapLayers.style.display = '';
+  // 時刻は「時刻を表示」トグルの状態に従う
+  setClockVisible(el.toggleClock.checked);
+}
+
+// アプリ全体は body { overflow: hidden } でスクロールしない前提。
+// 入力欄へのフォーカス等でページ・マップ画面がスクロールしていたら原点に戻す
+function resetPageScroll() {
   const scroller = document.scrollingElement || document.documentElement;
   if (scroller.scrollTop !== 0 || scroller.scrollLeft !== 0) {
     scroller.scrollTop = 0;
@@ -727,12 +744,39 @@ function normalizeMapChrome() {
     mapView.scrollTop = 0;
     mapView.scrollLeft = 0;
   }
+}
 
-  // 表示状態も明示的に復帰(hidden / display の取り残し対策)
-  el.btnMapLayers.hidden = false;
-  el.btnMapLayers.style.display = '';
-  // 時刻は「時刻を表示」トグルの状態に従う
-  setClockVisible(el.toggleClock.checked);
+// ===== ページの拡大・ずれの防止 =====
+// マップ画面の上部ボタン(≡・時刻・記録・カメラ)は、地図(#map、position: fixed で常に画面全体)の
+// 上に絶対配置している。ページ自体が拡大されたりスクロールしたりすると、地図はそのままで
+// ボタンだけが画面の外(主に上)へ出て押せなくなる。そこでページの拡大とずれを起こさせない。
+// - 拡大: 地図の上は Leaflet が止めているが、ボタン・時刻の周りやメニュー・モーダルの上で
+//   2本指を広げるとページが拡大され、地図の上では(Leaflet が受け取るため)戻せなくなる。
+//   写真の表示で写真を拡大して閉じたときも、ページが拡大されたまま残る。
+//   viewport の指定(index.html)・html の touch-action(style.css)で止め、
+//   iOS は利用者の拡大を viewport の指定では止められないため、ここで gesturestart を取り消す。
+//   さらに念のため、地図と写真の拡大表示の外で2本指を動かしたときは touchmove を取り消す
+//   (2本指の拡大縮小は地図と写真の拡大表示だけで使う。起動時画面・設定・メニューでは何も起きない)。
+// - ずれ: スクロールが起きたら、その場で原点へ戻す。文字入力中(ソフトキーボード表示中)は
+//   入力欄を見せるためのスクロールなので戻さない(モーダルを閉じたときに normalizeMapChrome が戻す)
+function guardPageViewport() {
+  const cancel = (e) => e.preventDefault();
+  document.addEventListener('gesturestart', cancel, { passive: false });
+  document.addEventListener('gesturechange', cancel, { passive: false });
+  // 地図(Leaflet)と写真の拡大表示(photo-zoom.js)は、2本指の操作を自分で拡大縮小に使うため除く
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length < 2) return;
+    if (e.target instanceof Element && e.target.closest('#map, #photoZoomStage')) return;
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  // scroll はバブリングしないため capture で受ける(パネル内のスクロールは対象外)
+  document.addEventListener('scroll', (e) => {
+    if (e.target !== document && e.target !== el.views.map) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && isKeyboardInput(active)) return;
+    resetPageScroll();
+  }, { capture: true, passive: true });
 }
 
 // ===== ビュー切替 =====
@@ -761,8 +805,11 @@ function closeModal(modal) {
   blurActiveElement();
   if (!modal) return;
   modal.hidden = true;
-  // 写真の表示を閉じたら、表示していた画像の URL を手放す
-  if (modal.id === 'photoViewModal') releasePhotoView();
+  // 写真の表示を閉じたら、拡大表示も閉じ(同じ画像を使っているため)、表示していた画像の URL を手放す
+  if (modal.id === 'photoViewModal') {
+    closePhotoZoom();
+    releasePhotoView();
+  }
   // 写真の一覧を閉じたら、タイルの見張りを止める(縮小画像は photos.js が写真ごとに覚えている)
   if (modal.id === 'photoListModal') releasePhotoList();
   // 写真の出力(KMZ)モーダルを閉じたら、読み出した画像を捨てる(大きいため持ち続けない)
@@ -1979,6 +2026,13 @@ function refreshPhotoViewIndex() {
   const photos = getPhotos();
   const index = photos.findIndex((p) => p.id === viewingPhotoId);
   if (index >= 0) setPhotoViewIndex(index, photos.length);
+}
+
+// 表示中の写真を拡大表示で開く。名前の入力中ならキーボードを閉じる(名前は閉じたとき等に保存する)
+function openViewingPhotoZoom() {
+  if (!viewingPhotoUrl) return;
+  blurActiveElement();
+  openPhotoZoom(viewingPhotoUrl, el.photoViewImage.alt);
 }
 
 // 左右の矢印ボタン: 入力中の名前を保存してから、前(step=-1)・次(step=1)の写真へ移る

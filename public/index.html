@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- ページ自体の拡大は止める(maximum-scale / user-scalable)。拡大されると、地図の上に
+       重ねた上部ボタンが画面の外へ出て押せなくなるため。地図の拡大縮小は Leaflet が行う。
+       iOS はこの指定では利用者の拡大を止めないため、style.css の touch-action と
+       app.js の guardPageViewport でも止めている -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#2c7a3d" />
   <title>箕面ハイキング</title>
 
@@ -317,6 +321,10 @@
           <button type="button" class="photo-view-nav photo-view-next" id="btnPhotoViewNext" aria-label="次の写真" title="次の写真" data-i18n-aria="photo.next" data-i18n-title="photo.next">
             <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
+          <!-- 写真を画面いっぱいに広げて拡大できる表示(photo-zoom.js)を開く。画像を押しても開く -->
+          <button type="button" class="photo-view-zoom" id="btnPhotoViewZoom" aria-label="写真を拡大して見る" title="写真を拡大して見る" data-i18n-aria="photo.zoomOpen" data-i18n-title="photo.zoomOpen">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15 15l5 5M10.5 8v5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
         </div>
         <!-- 名前の欄の右に、表示中の写真を削除するボタン(ごみ箱) -->
         <div class="track-export-row">
@@ -366,6 +374,20 @@
     <div class="camera-bar">
       <button type="button" class="camera-close" id="btnCameraClose" aria-label="閉じる" data-i18n-aria="common.close">×</button>
       <button type="button" class="camera-shutter" id="btnCameraShutter" aria-label="撮影" data-i18n-aria="camera.shutter"></button>
+    </div>
+  </div>
+
+  <!-- 写真の拡大表示(photo-zoom.js)。写真の表示の画像・拡大ボタンから開き、写真を画面いっぱいに出して
+       2本指で拡大・縮小、拡大中は1本指で移動、ダブルタップで拡大/等倍。
+       写真の表示(モーダル 1000)とカメラ(1050)より前、トースト(1100)より後ろに重ねる -->
+  <div class="photo-zoom-overlay" id="photoZoomOverlay" hidden role="dialog" aria-modal="true" aria-label="写真の拡大表示" data-i18n-aria="photo.zoomAria">
+    <div class="photo-zoom-stage" id="photoZoomStage">
+      <img class="photo-zoom-image" id="photoZoomImage" alt="" draggable="false" />
+    </div>
+    <!-- 下部: 左に閉じる、中央に操作の案内(カメラ画面と同じ並び) -->
+    <div class="photo-zoom-bar">
+      <button type="button" class="camera-close" id="btnPhotoZoomClose" aria-label="閉じる" data-i18n-aria="common.close">×</button>
+      <p class="photo-zoom-hint" data-i18n="photo.zoomHint">2本指で拡大・縮小、ダブルタップで拡大／元に戻す</p>
     </div>
   </div>
 

@@ -244,6 +244,10 @@ const DICT = {
   'photo.viewTitleIndex': { ja: '写真 {n} / {total}', en: 'Photo {n} / {total}' },
   'photo.prev': { ja: '前の写真', en: 'Previous Photo' },
   'photo.next': { ja: '次の写真', en: 'Next Photo' },
+  // 写真の拡大表示(写真の表示の画像・右下の虫めがねから開く全画面の表示)
+  'photo.zoomOpen': { ja: '写真を拡大して見る', en: 'Enlarge Photo' },
+  'photo.zoomAria': { ja: '写真の拡大表示', en: 'Enlarged Photo' },
+  'photo.zoomHint': { ja: '2本指で拡大・縮小、ダブルタップで拡大／元に戻す', en: 'Pinch to zoom. Double-tap to zoom in or reset.' },
   'photo.nameLabel': { ja: '名前', en: 'Name' },
   // 写真の表示の、名前の欄の右のごみ箱(表示中の写真を削除する)
   'photo.delete': { ja: '写真を削除', en: 'Delete Photo' },
@@ -575,11 +579,11 @@ const DICT = {
   'guide.mapMenuBody': {
     ja: '右上のメニューボタン(≡)で表示設定パネルを開きます(地図をタップすると閉じます)。\n' +
         '「時刻を表示」はメニューボタンの左に、「ズームレベルを表示」は画面の右下に出ます。\n' +
-        '「現在地点をマーカー表示」で現在地の青い丸を出し、「現在地点は中央に表示」で地図が現在地に追従します。いずれも初期設定はオンです。\n' +
+        '「現在地点をマーカー表示」で現在地の青い丸を出し、「現在地点は中央に表示」で地図が現在地に追従します(地図を動かしても、5秒間操作しなければ現在地に戻ります)。いずれも初期設定はオンです。\n' +
         '好きな場所を自由に見たいときは「現在地点は中央に表示」をオフにします。',
     en: 'The menu button (≡) at the top right opens the display settings panel (tap the map to close it).\n' +
         '"Show Clock" appears left of the menu button, "Show Zoom Level" at the bottom right.\n' +
-        '"Show Current Location Marker" shows your blue dot, and "Keep Current Location Centered" makes the map follow you. All are on by default.\n' +
+        '"Show Current Location Marker" shows your blue dot, and "Keep Current Location Centered" makes the map follow you (if you move the map, it returns to you after 5 seconds without touching it). All are on by default.\n' +
         'Turn off "Keep Current Location Centered" to pan around freely.'
   },
 

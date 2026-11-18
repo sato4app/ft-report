@@ -8,10 +8,11 @@
 import * as L from 'leaflet';
 import {
   getMap, buildMarkerIcon, ensureMapSize, fitMapToLatLngs,
-  isOneFingerZooming, setOneFingerZoomAroundCenter
+  isOneFingerZooming, setOneFingerZoomAroundCenter,
+  msSinceMapInteraction, setOnMapInteractionEnd
 } from './map.js';
 import { saveLatestTrack, loadLatestTrack, clearLatestTrack } from './db.js';
-import { PHOTO_POSITION_TIMEOUT_MS } from './config.js';
+import { PHOTO_POSITION_TIMEOUT_MS, FOLLOW_RESUME_IDLE_SEC } from './config.js';
 import { t } from './i18n.js';
 
 let currentLocationMarker = null;
@@ -696,7 +697,8 @@ function onGeoSuccess(pos) {
     updateRecordingLive(latlng);
   }
 
-  if (shouldFollowMap()) moveMapToCurrentLocation(latlng);
+  // 地図を操作している間と、操作を終えてから FOLLOW_RESUME_IDLE_SEC 秒は寄せない(→ scheduleFollowResume)
+  if (shouldFollowMap() && isMapIdleForFollow()) moveMapToCurrentLocation(latlng);
 }
 
 // いま地図を現在地へ寄せてよいか。
@@ -711,6 +713,33 @@ function shouldFollowMap() {
 // 追従中の1本指ズームは、触れた地点ではなく現在地のある画面中央を中心にする(map.js 参照)
 setOneFingerZoomAroundCenter(shouldFollowMap);
 
+// ===== 地図を操作した後の追従の再開 =====
+// 「現在地点は中央に表示」でも、利用者が地図を操作している間(触れている間)と、操作を終えてから
+// FOLLOW_RESUME_IDLE_SEC 秒のあいだは現在地へ寄せない。位置の更新のたびにすぐ引き戻すと、
+// 地図を動かして周りを見ることができないため。何も操作しないままその秒数が経ったら、
+// 次の位置の更新を待たずに寄せる(立ち止まっていると位置の更新がなかなか来ないことがあるため)。
+// トグルを ON にした直後・現在地点表示ボタン・画面の回転で寄せるのは、この待ちの対象外(すぐ寄せる)。
+const FOLLOW_RESUME_IDLE_MS = FOLLOW_RESUME_IDLE_SEC * 1000;
+let followResumeTimer = null;
+
+function isMapIdleForFollow() {
+  return msSinceMapInteraction() >= FOLLOW_RESUME_IDLE_MS;
+}
+
+// 操作を終えたとき(map.js から)に呼ぶ。待つ間にまた操作されたら、終えたところから数え直す
+function scheduleFollowResume() {
+  clearTimeout(followResumeTimer);
+  followResumeTimer = setTimeout(() => {
+    followResumeTimer = null;
+    if (!isMapIdleForFollow()) {
+      scheduleFollowResume();
+      return;
+    }
+    if (shouldFollowMap() && isLastFixFresh()) moveMapToCurrentLocation(lastKnownLatLng);
+  }, Math.max(0, FOLLOW_RESUME_IDLE_MS - msSinceMapInteraction()));
+}
+setOnMapInteractionEnd(scheduleFollowResume);
+
 // 直近の位置が「現在地」として使えるほど新しいか。
 // 監視を止めているあいだは位置が更新されないため、再開直後は古い位置が残っている
 function isLastFixFresh() {
@@ -724,7 +753,7 @@ function moveMapToCurrentLocation(latlng) {
   const map = getMap();
   if (!map) return;
   // 1本指ズームの最中は寄せない(途中のズームレベルは整数でないため、寄せると拡大縮小が乱れる)。
-  // 指を離した後の次の測位で寄せ直す
+  // 指を離してから FOLLOW_RESUME_IDLE_SEC 秒後に寄せ直す(scheduleFollowResume)
   if (isOneFingerZooming()) return;
   // 寄せる前に地図の大きさを測り直す。覚え違いのまま寄せると、Leaflet が中央だと
   // 思う座標が実際の中央からずれ、現在地が画面の外に置かれる(ensureMapSize 参照)。

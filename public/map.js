@@ -64,6 +64,8 @@ export function initMap(containerId) {
   });
   // 1本指ズーム(ダブルタップしてそのまま上下に滑らせる)。ダブルタップだけでは拡大しない
   enableOneFingerZoom(map);
+  // 利用者が地図を操作した時刻を覚える(操作の直後は現在地へ引き戻さないため。geolocation.js)
+  watchUserInteraction(map);
 
   L.tileLayer(GSI_TILE_URL, {
     attribution: GSI_ATTRIBUTION,
@@ -105,6 +107,59 @@ export function fitMapToLatLngs(latlngs = [], bounds = L.latLngBounds([])) {
     ? mapInstance.getZoom()
     : mapInstance.getBoundsZoom(all, false, [FIT_PADDING * 2, FIT_PADDING * 2]);
   mapInstance.setView(all.getCenter(), Math.min(Math.max(zoom, FIT_MIN_ZOOM), FIT_MAX_ZOOM));
+}
+
+// ===== 利用者による地図の操作 =====
+// 地図(ズームボタン等の地図上のボタンも含む)に触れた・ホイールを回した時刻を覚える。
+// 「現在地点は中央に表示」は、操作を終えてから一定時間(FOLLOW_RESUME_IDLE_SEC)は現在地へ
+// 寄せない(geolocation.js)。触れている間はずっと操作中とみなす。
+// 指の動きは pointer イベントで見る(Leaflet は touch イベントで動かすが、pointer イベントも並んで届く)。
+let lastUserInteractionMs = 0;
+const activePointers = new Set();
+let onUserInteractionEnd = null;
+// 指を離した知らせを取りこぼしたとき(触れたままアプリを切り替えた等)に、操作中のまま
+// 追従が止まり続けないよう、この時間[ms]動きが無ければ触れている指は無いものとみなす
+const STALE_POINTER_MS = 60 * 1000;
+
+// 最後に地図を操作してからの経過時間[ms]。触れている間は 0
+export function msSinceMapInteraction() {
+  const elapsed = Date.now() - lastUserInteractionMs;
+  if (activePointers.size > 0 && elapsed < STALE_POINTER_MS) return 0;
+  return elapsed;
+}
+
+// 地図の操作を終えたとき(指をすべて離した・ホイールを回した)に呼ぶ処理を登録する(geolocation.js から)
+export function setOnMapInteractionEnd(fn) {
+  onUserInteractionEnd = fn;
+}
+
+function watchUserInteraction(map) {
+  const container = map.getContainer();
+  const mark = () => { lastUserInteractionMs = Date.now(); };
+  const opts = { capture: true, passive: true };
+  container.addEventListener('pointerdown', (e) => {
+    activePointers.add(e.pointerId);
+    mark();
+  }, opts);
+  container.addEventListener('pointermove', (e) => {
+    if (activePointers.has(e.pointerId)) mark();
+  }, opts);
+  // 指・マウスを地図の外で離すこともあるため、離したことは window で受ける
+  const release = (e) => {
+    if (!activePointers.delete(e.pointerId)) return;
+    mark();
+    if (activePointers.size === 0) onUserInteractionEnd?.();
+  };
+  window.addEventListener('pointerup', release, opts);
+  window.addEventListener('pointercancel', release, opts);
+  container.addEventListener('wheel', () => {
+    mark();
+    onUserInteractionEnd?.();
+  }, opts);
+  // 画面が隠れたら、触れている指の記録を捨てる(離した知らせが来ないことがあるため)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') activePointers.clear();
+  });
 }
 
 // ===== 1本指ズーム(ダブルタップしてそのまま上下に滑らせる) =====

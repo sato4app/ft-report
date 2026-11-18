@@ -12,16 +12,16 @@ import { getLang } from './i18n.js';
 
 export const VERSION_HISTORY = [
   {
-    date: '2026-05-07',
-    text: { ja: 'deploy実施(αテスト開始)', en: 'Deployed (alpha testing began)' }
+    date: '2026-11-18',
+    text: { ja: '機能追加: 写真を撮影', en: 'New feature: Take Photos' }
   },
   {
     date: '2026-10-15',
     text: { ja: '初期公開バージョン(βテスト開始)', en: 'First public version (beta testing began)' }
   },
   {
-    date: '2026-11-18',
-    text: { ja: '機能追加: 写真を撮影', en: 'New feature: Take Photos' }
+    date: '2026-05-07',
+    text: { ja: 'deploy実施(αテスト開始)', en: 'Deployed (alpha testing began)' }
   }
 ];
 

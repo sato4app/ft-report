@@ -15,6 +15,14 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
 }
 
+/* ページ自体の拡大(2本指・ダブルタップ)を止め、縦横のスクロールだけを許す。
+   touch-action は祖先の指定と重ねて効くため、html に付ければ全体に及ぶ
+   (パネル・モーダルの中のスクロールはそのまま使える)。拡大されると、地図の上に
+   重ねた上部ボタンが画面の外へ出て押せなくなる(app.js の guardPageViewport 参照) */
+html {
+  touch-action: pan-x pan-y;
+}
+
 html,
 body {
   margin: 0;
@@ -957,13 +965,38 @@ body.view-state-map .leaflet-control-container {
   cursor: default;
 }
 
-/* 写真の表示モーダルの画像: 縦長の写真でも名前欄とボタンが画面に収まるよう高さを抑える */
+/* 写真の表示モーダルの画像: 縦長の写真でも名前欄とボタンが画面に収まるよう高さを抑える。
+   押すと拡大表示(photo-zoom.js)を開く */
 .photo-view-image {
   display: block;
   width: 100%;
   max-height: 55vh;
   object-fit: contain;
   background: #111;
+  cursor: zoom-in;
+}
+
+/* 拡大表示を開くボタン(虫めがね): 画像の右下に重ねる。前後の矢印と同じ丸地 */
+.photo-view-zoom {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.photo-view-zoom svg {
+  display: block;
 }
 
 .photo-view-meta {
@@ -1152,6 +1185,71 @@ body.view-state-map .leaflet-control-container {
 .camera-shutter:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* ===== 写真の拡大表示(photo-zoom.js) ===== */
+/* 画面全体を黒で覆い、写真を収める。写真の表示(モーダル 1000)・カメラ(1050)より前、トースト(1100)より後ろ */
+.photo-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.photo-zoom-overlay[hidden] {
+  display: none;
+}
+
+/* 写真を置く枠。拡大した写真のはみ出しは隠す。指の操作はブラウザに渡さず photo-zoom.js が受け取る */
+.photo-zoom-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+/* 大きさ(枠に収まる大きさ)と位置・倍率(transform)は photo-zoom.js が決める。
+   中心を枠の中心に置き、そこからずらして倍率をかける */
+.photo-zoom-image {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  transform-origin: center center;
+  will-change: transform;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* ダブルタップでの拡大・等倍への切り替えだけ滑らかに見せる */
+.photo-zoom-image.is-animating {
+  transition: transform 0.25s ease-out;
+}
+
+/* 下部の操作列: 左に閉じる(カメラ画面の × と同じ見た目)、中央に操作の案内 */
+.photo-zoom-bar {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem 1rem;
+}
+
+.photo-zoom-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
 }
 
 /* ===== プレースホルダビュー ===== */

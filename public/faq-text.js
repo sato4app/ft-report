@@ -501,8 +501,8 @@ export const FAQ_SECTIONS = [
             en: 'This is because the app takes photos within its own screen instead of switching to your phone\'s camera app, so that your location and track keep being recorded while you shoot. Switching to the camera app stops the recording, and on devices with little memory the app can be closed, losing the track and photos.'
           },
           {
-            ja: '撮った写真は、地図の写真撮影地点の印を押すと見られます。写真の表示の「一覧」で、全部の写真を並べて見ることもできます。',
-            en: 'To see your photos, tap a photo point on the map. "List" in the photo view shows all your photos side by side.'
+            ja: '撮った写真は、地図の写真撮影地点の印を押すと見られます。写真の表示の「一覧」で、全部の写真を並べて見ることもできます。写真を押すと画面いっぱいに広がり、2本指で拡大できます。',
+            en: 'To see your photos, tap a photo point on the map. "List" in the photo view shows all your photos side by side. Tap a photo to show it full screen, where you can pinch to zoom in.'
           },
           {
             ja: 'アプリの外で使いたいときは、「写真を撮影」の「出力」で KMZ ファイルに出力してください。KMZ ファイルは Google Earth などで開けます。また KMZ ファイルは ZIP 形式なので、パソコンで拡張子を「.zip」に変えて展開すると、files フォルダに写真(JPEG)が入っています。',
