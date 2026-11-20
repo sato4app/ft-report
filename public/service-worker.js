@@ -4,9 +4,18 @@
 // - app-shell-{日付}.{連番}: アプリシェル(HTML/CSS/JS、CDN、アイコン)。取得戦略は handleShellRequest。
 // 公開API(/api/*)は横取りしない。取得とキャッシュはアプリ側(published-data.js)が version を見て行う。
 
-const SHELL_CACHE = 'app-shell-2026-11-20.4';
+const SHELL_CACHE = 'app-shell-2026-11-20.5';
 const TILE_CACHE_PREFIX = 'gsi-';
 const SHELL_CACHE_PREFIX = 'app-shell-';
+
+// 開いている画面が古い版のまま残ったことを、画面の側で気づけるようになった最初の版。
+// これより前の版(2026-10-21.1 以前)の画面は、ブラウザが裏で新しい版へ入れ替えても気づけない
+// (起動時画面のボタンで版を比べても、キャッシュの版名はもう新しいため「更新なし」になる)。
+// そのため、アプリを終了して開き直すまで古い画面のまま動き続ける。
+// こうした版から切り替わったときは、activate で開いている画面を読み込み直す(→ reloadLegacyClients)。
+// 注: 更新確認(update.js)は service-worker.js の中で最初に現れる版名の代入を読むため、
+//     ここに「app-shell-」付きの版名を書かないこと。
+const PAGE_OUTDATED_AWARE_SINCE = '2026-10-21.2';
 
 // シェル各ファイルの内容ハッシュ一覧。デプロイ時に生成される(未生成なら null 扱い)。
 const REVISIONS_URL = './shell-revisions.json';
@@ -220,19 +229,55 @@ self.addEventListener('message', (event) => {
 
 // アクティベート: 旧シェルキャッシュのみ掃除。
 // タイル(gsi-*)とアプリ管理のキャッシュ(公開データ)は保持する。
+// 切り替え前が旧版(PAGE_OUTDATED_AWARE_SINCE より前)だったときは、開いている画面を読み込み直す。
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
+      // 掃除で消える前に、切り替え前の版を見ておく
+      const fromLegacy = keys.some((k) =>
+        k.startsWith(SHELL_CACHE_PREFIX) && k !== SHELL_CACHE &&
+        isShellVersionBefore(k.slice(SHELL_CACHE_PREFIX.length), PAGE_OUTDATED_AWARE_SINCE));
       await Promise.all(
         keys
           .filter((k) => k !== SHELL_CACHE && !APP_MANAGED_CACHES.includes(k) && !k.startsWith(TILE_CACHE_PREFIX))
           .map((k) => caches.delete(k))
       );
       await self.clients.claim();
+      if (fromLegacy) await reloadLegacyClients();
     })()
   );
 });
+
+// 'YYYY-MM-DD.N' 形式の版 a が b より前か(連番は数として比べる)。形式が違えば false
+function isShellVersionBefore(a, b) {
+  const parse = (v) => {
+    const m = /^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(v);
+    return m ? { date: m[1], seq: Number(m[2]) } : null;
+  };
+  const x = parse(a);
+  const y = parse(b);
+  if (!x || !y) return false;
+  return x.date < y.date || (x.date === y.date && x.seq < y.seq);
+}
+
+// 旧版の画面を、新しい版で読み込み直す。claim の後なので、開いている画面はこの SW の制御下にあり
+// navigate できる。
+// - ブラウザが新しい版を見つけて入れ替えるのは、アプリを開いた(画面を読み込んだ)ときなので、
+//   読み込み直すのは開いた直後の画面になる。記録中などの操作を途中で止めることはまず無い。
+// - navigate の完了(読み込み直した画面の表示)は待たない。その画面の取得はこの SW が activate を
+//   終えるまで待たされるため、ここで待つと互いに待ち合って止まる。
+// - navigate に対応していない端末では何もしない(従来どおり、開き直したときに新しい版になる)。
+async function reloadLegacyClients() {
+  try {
+    const windows = await self.clients.matchAll({ type: 'window' });
+    for (const client of windows) {
+      client.navigate(client.url).catch((err) => console.warn('[SW] reload failed:', client.url, err));
+    }
+  } catch (err) {
+    console.warn('[SW] reload of legacy pages failed:', err);
+  }
+}
 
 // fetch: タイルとアプリシェルで挙動分岐
 self.addEventListener('fetch', (event) => {
