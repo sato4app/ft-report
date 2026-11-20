@@ -11,19 +11,26 @@
 // - 地図データ(geojson のポイント名・スポット名等)は翻訳対象外(日本語のまま)。
 
 import { LANGUAGE_KEY } from './config.js';
+import { readLocal, writeLocal } from './storage.js';
 
 // 現在言語の読取。'en' 以外はすべて 'ja' に正規化する
 export function getLang() {
-  try { return localStorage.getItem(LANGUAGE_KEY) === 'en' ? 'en' : 'ja'; } catch { return 'ja'; }
+  return readLocal(LANGUAGE_KEY) === 'en' ? 'en' : 'ja';
 }
 
 // 言語の保存(切替の反映は呼び出し側で location.reload() する)
 export function setLang(lang) {
-  try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { /* noop */ }
+  writeLocal(LANGUAGE_KEY, lang);
 }
 
 // リロード方式のためセッション中は不変。モジュール読込時に1回だけ確定する
 const lang = getLang();
+
+// 日英の文言 { ja, en } から表示言語のものを取り出す。未訳のときは日本語で出す(空欄にはしない)。
+// 辞書(t)のほか、faq-text.js・version-history.js のように文言を { ja, en } で持つ所でも使う
+export function pickLang(entry) {
+  return entry[lang] ?? entry.ja;
+}
 
 // ===== 翻訳辞書 =====
 // キー命名: <画面/モジュール>.<意味> の2階層。値は { ja, en }。
@@ -243,9 +250,8 @@ const DICT = {
     en: 'Clear all photos ({n}) currently shown on the map?'
   },
   'photo.cleared': { ja: '写真をクリアしました', en: 'Photos cleared' },
-  // 写真の表示(地図のカメラの印・カメラ画面のサムネイルから)
-  'photo.viewTitle': { ja: '写真', en: 'Photo' },
-  // 写真の表示の見出し(何枚目/全何枚。撮影・読み込みの順)と、前後の写真へ移るボタン(< >)
+  // 写真の表示(地図のカメラの印・写真の一覧・撮影の直後から)の見出し(何枚目/全何枚。撮影・読み込みの順)と、
+  // 前後の写真へ移るボタン(< >)
   'photo.viewTitleIndex': { ja: '写真 {n} / {total}', en: 'Photo {n} / {total}' },
   'photo.prev': { ja: '前の写真', en: 'Previous Photo' },
   'photo.next': { ja: '次の写真', en: 'Next Photo' },
@@ -375,7 +381,6 @@ const DICT = {
   // 「も含める」とする(Z=14〜17 もあわせてダウンロードされることが分かるように)
   'download.includeDetail': { ja: '詳細な地図データ(z=18)も含める', en: 'Include Detailed Map Data (z=18)' },
   'download.startBtn': { ja: 'ダウンロード', en: 'Download' },
-  'download.manifestLoadFailed': { ja: 'マニフェスト読込失敗: {message}', en: 'Failed to load manifest: {message}' },
   'download.noLayers': { ja: 'マニフェストにレイヤー情報がありません', en: 'The manifest has no layer information' },
   'download.noTargets': { ja: 'ダウンロード対象がありません', en: 'Nothing to download' },
   'download.started': { ja: 'ダウンロード開始: {n} タイル', en: 'Download started: {n} tiles' },
@@ -724,7 +729,7 @@ export function t(key, params) {
     console.warn('[i18n] missing key:', key);
     return key;
   }
-  let text = entry[lang] ?? entry.ja;
+  let text = pickLang(entry);
   if (params) {
     for (const [name, value] of Object.entries(params)) {
       text = text.replaceAll(`{${name}}`, String(value));

@@ -1,26 +1,38 @@
 // マーカー設定モジュール
 // 地図上の各マーカー(緊急ポイント/ルート/スポット/現在地点/移動記録関連/写真撮影地点等)の色・形状・サイズを
-// 設定UIで編集し、localStorage に保存して地図へ反映する。
+// 設定UI(マーカーの設定モーダル)で編集し、localStorage に保存して地図へ反映する。
 
 import {
   MARKER_SETTINGS_KEY, MARKER_SETTINGS_REV_KEY, MARKER_TYPES, MARKER_SHAPES, MARKER_SHAPE_SYMBOLS
-} from './config.js';
-import {
-  setEmergencyStyle,
-  setHikingRouteStyle, setHikingSpotStyle,
-  setClosureClosedStyle, setClosureDifficultStyle,
-  shapeToSVG
-} from './map.js';
-import {
-  setCurrentLocationStyle, setTrackStyle, setTrackStartStyle, setTrackCurrentStyle
-} from './geolocation.js';
-import { setPhotoStyle } from './photos.js';
-import { t } from './i18n.js';
+} from '../common/config.js';
+import { setOverlayStyle } from './map-overlays.js';
+import { shapeToSVG } from './marker-icons.js';
+import { setCurrentLocationStyle } from './geolocation.js';
+import { setTrackStyle, setTrackStartStyle, setTrackCurrentStyle } from '../track/track.js';
+import { setPhotoStyle } from '../photo/photos.js';
+import { t } from '../common/i18n.js';
+import { readLocalJSON, writeLocalJSON } from '../common/storage.js';
 
 const el = {
+  settingsModal: document.getElementById('settingsModal'),
   markerSettingsList: document.getElementById('markerSettingsList'),
   markerSettingsNotes: document.getElementById('markerSettingsNotes'),
   btnResetMarkerSettings: document.getElementById('btnResetMarkerSettings')
+};
+
+// 種別(config.js の MARKER_TYPES の key) → 地図へスタイルを反映する関数
+const overlayStyleSetter = (key) => (style) => setOverlayStyle(key, style);
+const STYLE_SETTERS = {
+  emergency: overlayStyleSetter('emergency'),
+  hikingRoute: overlayStyleSetter('hikingRoute'),
+  spot: overlayStyleSetter('spot'),
+  closureClosed: overlayStyleSetter('closureClosed'),
+  closureDifficult: overlayStyleSetter('closureDifficult'),
+  currentLocation: setCurrentLocationStyle,
+  trackStart: setTrackStartStyle,
+  trackCurrent: setTrackCurrentStyle,
+  track: setTrackStyle,
+  photo: setPhotoStyle
 };
 
 // ===== 既定値の変更に合わせた保存値の置き換え(各段階1回だけ) =====
@@ -62,6 +74,18 @@ export function initMarkerSettings() {
   el.btnResetMarkerSettings.addEventListener('click', resetMarkerSettings);
 }
 
+// マーカーの設定モーダルを開く(マップ画面のメニューから)
+export function openMarkerSettingsModal() {
+  el.settingsModal.hidden = false;
+}
+
+// 全種別のスタイルを地図へ反映する。起動時は、公開データの読込・経路と写真の復元
+// (レイヤーやマーカーを作る)より前に呼ぶこと。後で呼ぶと既定の見た目で描かれてしまう。
+// settings を省略すると保存済み設定(無ければ config.js の既定値)を使う
+export function applyMarkerSettings(settings = readMarkerSettings()) {
+  for (const m of MARKER_TYPES) applyMarkerSettingToMap(m.key, settings[m.key]);
+}
+
 // 変更不可の属性か(config.js の MARKER_TYPES の locked で指定)
 function isLocked(m, attr) {
   return Array.isArray(m.locked) && m.locked.includes(attr);
@@ -79,12 +103,8 @@ function isColor(color) {
 
 // 保存済み設定を既定値で埋めて返す(初期スタイル適用にも使用)。
 // 変更不可の属性は保存値があっても既定値を使う。
-export function readMarkerSettings() {
-  let saved = {};
-  try {
-    const raw = localStorage.getItem(MARKER_SETTINGS_KEY);
-    if (raw) saved = JSON.parse(raw) || {};
-  } catch { /* noop */ }
+function readMarkerSettings() {
+  const saved = readLocalJSON(MARKER_SETTINGS_KEY) || {};
   const merged = {};
   for (const m of MARKER_TYPES) {
     const s = saved[m.key] || {};
@@ -98,7 +118,7 @@ export function readMarkerSettings() {
 }
 
 function writeMarkerSettings(settings) {
-  try { localStorage.setItem(MARKER_SETTINGS_KEY, JSON.stringify(settings)); } catch { /* noop */ }
+  writeLocalJSON(MARKER_SETTINGS_KEY, settings);
 }
 
 function renderMarkerSettings() {
@@ -258,16 +278,7 @@ function updateMarkerSetting(key, attr, value) {
 
 // 設定変更を地図側へ反映する
 function applyMarkerSettingToMap(key, style) {
-  if (key === 'emergency') setEmergencyStyle(style);
-  else if (key === 'hikingRoute') setHikingRouteStyle(style);
-  else if (key === 'spot') setHikingSpotStyle(style);
-  else if (key === 'closureClosed') setClosureClosedStyle(style);
-  else if (key === 'closureDifficult') setClosureDifficultStyle(style);
-  else if (key === 'currentLocation') setCurrentLocationStyle(style);
-  else if (key === 'track') setTrackStyle(style);
-  else if (key === 'trackStart') setTrackStartStyle(style);
-  else if (key === 'trackCurrent') setTrackCurrentStyle(style);
-  else if (key === 'photo') setPhotoStyle(style);
+  STYLE_SETTERS[key]?.(style);
 }
 
 // 規定値に戻す: config.js の MARKER_TYPES の値で localStorage を上書きし、
@@ -280,7 +291,5 @@ function resetMarkerSettings() {
   }
   writeMarkerSettings(defaults);
   renderMarkerSettings();
-  for (const m of MARKER_TYPES) {
-    applyMarkerSettingToMap(m.key, defaults[m.key]);
-  }
+  applyMarkerSettings(defaults);
 }

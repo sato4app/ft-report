@@ -1,7 +1,7 @@
 # 箕面ハイキングマップ デプロイ手順書
 
-**バージョン:** 1.10
-**最終更新日:** 2026年10月5日
+**バージョン:** 1.11
+**最終更新日:** 2026年11月20日
 **対象:** 運用・開発担当者
 **関連:**
 [機能仕様 `funcspec-202611.md`](funcspec-202611.md) /
@@ -31,7 +31,7 @@
   Vercel の本番（`https://minoh-hiking.vercel.app/`）に出る（手順は [5.1](#51-手順)）。
   `main` に push しただけでは、Vercel の本番は変わらない。
 - 公開API は **Vercel にしか無い**。GitHub Pages 版アプリは `https://minoh-hiking.vercel.app/api/*`
-  （**本番の API、つまり `release` の `api/`**）をクロスオリジンで参照する（[`config.js`](../public/config.js) が
+  （**本番の API、つまり `release` の `api/`**）をクロスオリジンで参照する（[`config.js`](../public/js/common/config.js) が
   `github.io` を判定して切り替える。API 側は CORS を全許可）。
   そのため **`api/` の変更は GitHub Pages では確認できない**（→ [5.4](#54-api-を変更するとき)）。
 - したがって **API を止めると両方のアプリでデータが出なくなる**。
@@ -275,6 +275,8 @@ Select-String -Path public/service-worker.js -Pattern "SHELL_CACHE = "
 **③ ファイルを追加したときは `SHELL_LOCAL_PATHS` にも足す**（同じファイル）
 
 - JS モジュール・アイコン・画像など、オフラインでも要るものはすべて
+- JS モジュールは `public/js/` の機能別のフォルダ（`common/` / `map/` / `track/` / `photo/` / `data/` / `info/`）に、
+  CSS は `public/css/` に置く（構成は機能仕様書 1.5。`SHELL_LOCAL_PATHS` も同じ分け方で並べている）
 - 入れ忘れると、オフライン起動時にそのファイルだけ取得できない
 
 **④ 差し替えた旧ファイルは、このリリースでは消さない**
@@ -634,3 +636,4 @@ curl.exe -s -o NUL -w "%{http_code}\n" -X POST -H "Content-Type: application/jso
 | 1.8 | 2026-09-23 | アプリ 2026.57 に追随。**9章に「端末で地図が出ない・一部の操作が効かない」**（古い `index.html` と新しい JS が混ざった状態）の行を追加した。初期化が途中で止まらなくなり、その状態でも地図表示と起動時画面のボタンからの更新確認は動く |
 | 1.9 | 2026-09-30 | アプリ 2026.70 に追随。公開データ（地図データ・通行止め・タイル一覧）の更新版の確認が「起動時のみ」から「起動時と、起動時画面のボタンをタップしたとき」に変わったため、9章の「公開したのにアプリに出ない」の原因と対処を改めた |
 | 1.10 | 2026-10-05 | アプリ 2026.72 に追随。起動時画面の「設定・情報/Settings & Info」が「情報・言語/Info & Language」に改称されたため、5.1・7.2 の確認箇所の書き方を合わせた |
+| 1.11 | 2026-11-20 | アプリのファイル構成の変更（`app-shell-2026-11-20.6`。JS を `public/js/` の機能別のフォルダへ、CSS を `public/css/` へ移した）に追随。5.1 ③ に置き場所を追記し、1章の `config.js` へのリンクを `public/js/common/config.js` に直した |

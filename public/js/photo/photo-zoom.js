@@ -1,6 +1,6 @@
 // 写真の拡大表示モジュール(写真の表示から開く全画面の表示)
 // 写真の表示(#photoViewModal)の画像か、その右下の拡大ボタンを押すと、写真を画面いっぱいに出し、
-// 指で拡大・縮小・移動できるようにする。ページ自体の拡大は止めている(app.js の guardPageViewport)
+// 指で拡大・縮小・移動できるようにする。ページ自体の拡大は止めている(page-guard.js の guardPageViewport)
 // ため、写真だけをこの画面の中で拡大する(ページを拡大すると閉じたあとも拡大が残り、
 // マップ画面の上部ボタンが画面の外へ出て押せなくなる)。
 // - 2本指で広げる・狭める: 拡大・縮小(1〜PHOTO_ZOOM_MAX 倍)。指の間の地点を中心にする
@@ -8,7 +8,7 @@
 // - ダブルタップ: 等倍なら PHOTO_ZOOM_DOUBLE_TAP 倍に拡大(押した地点を中心に)、拡大中なら等倍に戻す
 // - パソコンではマウスのホイールで拡大・縮小、ドラッグで移動、ダブルクリックで拡大/等倍
 // - × または Esc で閉じる(写真の表示に戻る)
-// 画像は写真の表示と同じ URL を使う。URL の解放は app.js(releasePhotoView)が行う。
+// 画像は写真の表示と同じ URL を使う。URL の解放は photo-view.js(releasePhotoView)が行う。
 
 // 拡大の上限(画面に収めた大きさに対する倍率)。写真は長辺 1600px(PHOTO_MAX_EDGE_PX)で保存しており、
 // スマホの画面幅(350px 前後)に収めた大きさのおよそ4倍で元の画素に届く。それ以上はぼやけるだけ
@@ -37,7 +37,7 @@ let gesture = null;
 let tapCandidate = null;
 let lastTap = null;
 
-export function isPhotoZoomOpen() {
+function isPhotoZoomOpen() {
   return !!el.overlay && !el.overlay.hidden;
 }
 

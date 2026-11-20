@@ -18,7 +18,7 @@
 /* ページ自体の拡大(2本指・ダブルタップ)を止め、縦横のスクロールだけを許す。
    touch-action は祖先の指定と重ねて効くため、html に付ければ全体に及ぶ
    (パネル・モーダルの中のスクロールはそのまま使える)。拡大されると、地図の上に
-   重ねた上部ボタンが画面の外へ出て押せなくなる(app.js の guardPageViewport 参照) */
+   重ねた上部ボタンが画面の外へ出て押せなくなる(page-guard.js の guardPageViewport 参照) */
 html {
   touch-action: pan-x pan-y;
 }
@@ -379,26 +379,6 @@ textarea {
   display: none;
 }
 
-/* 共通ビューヘッダー */
-.view-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: #2c7a3d;
-  color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  flex-shrink: 0;
-}
-
-.view-header h2 {
-  flex: 1;
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.btn-back,
 .btn-icon {
   display: inline-flex;
   align-items: center;
@@ -414,7 +394,6 @@ textarea {
   border-radius: 6px;
 }
 
-.btn-back:hover,
 .btn-icon:hover {
   background: rgba(255, 255, 255, 0.15);
 }
@@ -563,17 +542,6 @@ label {
 
 .btn-float:hover {
   background: rgba(255, 255, 255, 1);
-}
-
-.btn-back-float {
-  left: 0.75rem;
-}
-
-.btn-float .icon-back,
-.btn-back .icon-back {
-  display: block;
-  width: 24px;
-  height: 24px;
 }
 
 .btn-menu-float {
@@ -875,7 +843,7 @@ body.view-state-map .leaflet-control-container {
 }
 
 /* 停止の長押しの進み具合: 押している間、下から赤く満ちる(満ちたら停止の確認を出す)。
-   所要時間は app.js が TRACK_STOP_HOLD_MS から --hold-ms に入れる */
+   所要時間は track-ui.js が TRACK_STOP_HOLD_MS から --hold-ms に入れる */
 .btn-track-action::before {
   content: '';
   position: absolute;
@@ -1268,29 +1236,7 @@ body.view-state-map .leaflet-control-container {
   text-align: center;
 }
 
-/* ===== プレースホルダビュー ===== */
-.view-placeholder {
-  background: #fafafa;
-}
-
-.placeholder-body {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.placeholder-message {
-  color: #666;
-  font-size: 1rem;
-}
-
-/* ===== メッセージ履歴ビュー ===== */
-.view-messages {
-  background: #fafafa;
-}
-
+/* ===== メッセージ履歴 ===== */
 .message-list {
   flex: 1;
   list-style: none;
@@ -2184,10 +2130,6 @@ body.view-state-map .leaflet-control-container {
   line-height: 1.6;
 }
 
-.info-collapse .placeholder-message {
-  padding: 0.5rem 1.5rem;
-}
-
 /* 「情報・言語/Info & Language」モーダル内のメッセージ履歴: 高さを抑えてスクロール表示 */
 .info-collapse .message-list {
   flex: none;
@@ -2299,14 +2241,6 @@ body.view-state-map .leaflet-control-container {
   background: #245f30;
 }
 
-.btn-warning {
-  background: #d97706;
-}
-
-.btn-warning:not(:disabled):hover {
-  background: #b8620a;
-}
-
 .btn-danger {
   background: #b91c1c;
 }
@@ -2358,34 +2292,6 @@ body.view-state-map .leaflet-control-container {
 
 .btn-secondary:not(:disabled):hover {
   background: #374151;
-}
-
-/* ===== 進捗バー ===== */
-.progress-area {
-  padding: 0.5rem 1rem;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 16px;
-  background: #e5e5e5;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, #2c7a3d, #4ea860);
-  transition: width 0.2s ease-out;
-}
-
-.progress-text {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #444;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
 }
 
 /* ===== ステータスメッセージ ===== */

@@ -1,13 +1,16 @@
 // 写真モジュール(「写真を撮影」で撮った写真の保持・地図への表示・端末への保存)
 // - 写真はアプリの中(IndexedDB の photos ストア)にだけ保存する。端末の写真アプリには残らない。
 // - 写真は移動経路とは別に扱う。経路の記録・読み込み・クリアでは触らず、写真の「クリア」でだけ消す。
-// - 地図には撮影地点にカメラの印を出し、押すと app.js の写真の表示(名前の変更)を開く。
-// 撮影は camera.js、KMZ の出力・読み込みは kmz.js が担う。
+// - 地図には撮影地点にカメラの印を出し、押すと写真の表示(photo-view.js。名前の変更)を開く。
+// 撮影は camera.js、KMZ の出力・読み込みは kmz.js、画面の操作は photo-ui.js / photo-view.js が担う。
 import * as L from 'leaflet';
-import { getMap, fitMapToLatLngs, buildMarkerIcon } from './map.js';
-import { savePhotoRecord, listPhotoRecords, clearPhotoRecords, deletePhotoRecord } from './db.js';
-import { PHOTO_MAX_COUNT, PHOTO_MAX_EDGE_PX, PHOTO_JPEG_QUALITY, PHOTOS_UNEXPORTED_KEY } from './config.js';
-import { requestPersistentStorage } from './tiles.js';
+import { getMap, fitMapToLatLngs } from '../map/map.js';
+import { buildMarkerIcon } from '../map/marker-icons.js';
+import { savePhotoRecord, listPhotoRecords, clearPhotoRecords, deletePhotoRecord } from '../common/db.js';
+import { PHOTO_MAX_COUNT, PHOTO_MAX_EDGE_PX, PHOTO_JPEG_QUALITY, PHOTOS_UNEXPORTED_KEY } from '../common/config.js';
+import { requestPersistentStorage } from '../data/tiles.js';
+import { readLocal, writeLocal } from '../common/storage.js';
+import { drawToJpeg } from '../common/utils.js';
 
 // 写真の一覧(撮影・読み込みの順)。各要素は次の形: {
 //   id:               保存のキー(撮影時刻 + 乱数)
@@ -20,8 +23,8 @@ import { requestPersistentStorage } from './tiles.js';
 // 以前の版で保存した写真には、撮影地点として経路に入れた記録点の時刻(trackPointTimeMs)が
 // 付いていることがあるが、今は使わない(経路と写真は結び付けない)。
 let photos = [];
-let onPhotoClick = null;    // 印が押されたとき(app.js が写真の表示を開く)
-let onPhotosChanged = null; // 枚数・出力済みかどうかが変わったとき(app.js がパネルの表示を更新する)
+let onPhotoClick = null;    // 印が押されたとき(写真の表示を開く)
+let onPhotosChanged = null; // 枚数・出力済みかどうかが変わったとき(パネルの表示を更新する)
 
 export function setPhotoHandlers({ onClick, onChanged } = {}) {
   onPhotoClick = onClick || null;
@@ -53,14 +56,11 @@ export function fitMapToPhotos() {
 // パネルの「未出力/出力済み」の表示と、クリアの確認で写真が消えることを強めに知らせるのに使う。
 export function hasUnexportedPhotos() {
   if (photos.length === 0) return false;
-  try { return localStorage.getItem(PHOTOS_UNEXPORTED_KEY) === '1'; } catch { return false; }
+  return readLocal(PHOTOS_UNEXPORTED_KEY) === '1';
 }
 
 function setUnexported(on) {
-  try {
-    if (on) localStorage.setItem(PHOTOS_UNEXPORTED_KEY, '1');
-    else localStorage.removeItem(PHOTOS_UNEXPORTED_KEY);
-  } catch { /* noop */ }
+  writeLocal(PHOTOS_UNEXPORTED_KEY, on ? '1' : null);
 }
 
 export function markPhotosExported() {
@@ -129,7 +129,7 @@ async function addPhotoInternal({ name, timeMs, lat, lng, blob }) {
   return photo;
 }
 
-// 撮影した写真を加える(撮影時に app.js から呼ぶ)
+// 撮影した写真を加える(撮影時に photo-ui.js から呼ぶ)
 export async function addPhoto(fields) {
   const photo = await addPhotoInternal(fields);
   setUnexported(true);
@@ -165,7 +165,7 @@ export async function deletePhoto(id) {
   await deletePhotoRecord(id);
 }
 
-// 全写真を消す(写真の「クリア」と、クリアを選んだ撮影・読み込みから app.js が呼ぶ)
+// 全写真を消す(写真の「クリア」と、クリアを選んだ撮影・読み込みから photo-ui.js が呼ぶ)
 export async function clearPhotos() {
   for (const photo of photos) {
     removeMarker(photo);
@@ -209,12 +209,10 @@ async function makeThumb(blob) {
   if (typeof createImageBitmap !== 'function') return blob;
   const bitmap = await createImageBitmap(blob);
   const scale = Math.min(1, THUMB_EDGE_PX / Math.min(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const jpeg = drawToJpeg(bitmap,
+    Math.max(1, Math.round(bitmap.width * scale)), Math.max(1, Math.round(bitmap.height * scale)), 0.7);
   bitmap.close?.();
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b || blob), 'image/jpeg', 0.7));
+  return (await jpeg) || blob;
 }
 
 // 写真の縮小画像の URL を返す(作れなければ元の画像の URL。写真が無ければ null)
@@ -243,20 +241,16 @@ async function shrinkImage(blob) {
   try {
     const bitmap = await createImageBitmap(blob);
     const scale = Math.min(1, PHOTO_MAX_EDGE_PX / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const jpeg = drawToJpeg(bitmap,
+      Math.round(bitmap.width * scale), Math.round(bitmap.height * scale), PHOTO_JPEG_QUALITY);
     bitmap.close?.();
-    return await new Promise((resolve) => {
-      canvas.toBlob((b) => resolve(b || blob), 'image/jpeg', PHOTO_JPEG_QUALITY);
-    });
+    return (await jpeg) || blob;
   } catch {
     return blob;
   }
 }
 
-// KMZ から読んだ写真を加える(app.js の読み込みから)。上限(PHOTO_MAX_COUNT)を超える分は加えない。
+// KMZ から読んだ写真を加える(photo-ui.js の読み込みから)。上限(PHOTO_MAX_COUNT)を超える分は加えない。
 // items: [{ name, timeMs, lat, lng, blob }]。名前が無いものは defaultName(n) で付ける。
 // 加えた枚数と、上限で加えなかった枚数を返す。途中で保存に失敗したらそこで止めて例外を投げる。
 export async function importPhotos(items, defaultName) {

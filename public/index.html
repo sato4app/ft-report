@@ -5,7 +5,7 @@
   <!-- ページ自体の拡大は止める(maximum-scale / user-scalable)。拡大されると、地図の上に
        重ねた上部ボタンが画面の外へ出て押せなくなるため。地図の拡大縮小は Leaflet が行う。
        iOS はこの指定では利用者の拡大を止めないため、style.css の touch-action と
-       app.js の guardPageViewport でも止めている -->
+       page-guard.js の guardPageViewport でも止めている -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#2c7a3d" />
   <title>箕面ハイキング</title>
@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
 
   <!-- integrity: CDN 側でファイルが差し替えられたら読み込みを止める(SRI)。
        未対応ブラウザでは無視される。Leaflet の版を変えるときはハッシュも計算し直す -->
@@ -102,7 +102,7 @@
       </button>
       <!-- 記録開始/停止を兼ねるトグルボタン。「移動経路を記録」ON のときのみ表示。
            記録中は is-recording クラスで停止アイコンに切替。
-           aria-label/title は app.js が記録状態に応じて動的に更新するため data-i18n は付けない -->
+           aria-label/title は track-ui.js が記録状態に応じて動的に更新するため data-i18n は付けない -->
       <button type="button" class="btn-float btn-track-action" id="btnTrackToggle" aria-label="記録開始" title="記録開始" hidden>
         <svg class="icon-track-start" viewBox="0 0 24 24" width="32" height="32" aria-hidden="true" focusable="false">
           <path d="M8 5v14l11-7z" fill="currentColor"/>
@@ -140,7 +140,7 @@
       </label>
       <!-- 移動経路と写真は別々の機能。どちらも、トグル ON のときだけ統計と
            読み込み・出力・クリアを出す(OFF のときはトグルの1行だけにして縦の領域を節約する)。
-           データがあるときは、トグルの右に「未出力あり」「出力済み」を添える(app.js が設定)。
+           データがあるときは、トグルの右に「未出力あり」「出力済み」を添える(track-ui.js / photo-ui.js が設定)。
            出力済みかどうかは経路・写真それぞれ全体で1つ(1本・1枚でも未出力があれば「未出力あり」) -->
       <label class="toggle toggle-switch" data-guide="panelTrackRecording">
         <input type="checkbox" id="toggleTrackRecording" />
@@ -150,7 +150,7 @@
       </label>
       <!-- 移動経路: 統計(地点数・移動距離)と、その次の行に読み込み・出力・クリア(GPX だけを扱う) -->
       <!-- 統計: 経路1本につき1行。ラベルと値を横に並べて表示し、経路が複数あるときは
-           行の左に「経路 n」を添える。中身は app.js が経路の本数に応じて組み立てる -->
+           行の左に「経路 n」を添える。中身は track-ui.js が経路の本数に応じて組み立てる -->
       <div class="track-stats" id="trackStats" role="group" aria-label="移動経路の統計" data-i18n-aria="track.ariaStats" hidden></div>
       <div class="track-inline-actions" id="trackActions" data-guide="panelTrackActions" hidden>
         <button type="button" class="btn-track-mini" id="btnTrackImport" data-i18n="track.importGpx">GPX読み込み</button>
@@ -187,7 +187,7 @@
   </section>
 
   <!-- 表示中の移動経路があるときに「クリア/追加/中止」を選ぶモーダル。
-       記録開始と読み込みで共用し、見出し・説明・ボタン文言は app.js が用途に応じて設定する。
+       記録開始と読み込みで共用し、見出し・説明・ボタン文言は track-ui.js が用途に応じて設定する。
        閉じる(×・背景・キャンセル)は操作の中止で、経路には手を付けない -->
   <div class="modal" id="trackExistingModal" hidden role="dialog" aria-modal="true" aria-labelledby="trackExistingTitle">
     <div class="modal-backdrop" data-close-modal></div>
@@ -209,7 +209,7 @@
 
   <!-- 移動経路の記録の停止を確認するモーダル。記録停止ボタン(■)の長押し・続けて複数回のタップと、
        「移動経路を記録」トグルのオフで共用する。標準の confirm はページの処理を止め、
-       表示中は位置が記録されないため使わない。操作が無ければ app.js が数秒で閉じ、
+       表示中は位置が記録されないため使わない。操作が無ければ track-ui.js が数秒で閉じ、
        記録を続ける。閉じる(×・背景・キャンセル)は停止の取り消し -->
   <div class="modal" id="trackStopModal" hidden role="alertdialog" aria-modal="true" aria-labelledby="trackStopTitle" aria-describedby="trackStopMessage">
     <div class="modal-backdrop" data-close-modal></div>
@@ -243,7 +243,7 @@
           <label class="track-export-label" for="trackExportName" data-i18n="track.exportFilename">ファイル名</label>
           <input type="text" id="trackExportName" autocomplete="off" />
         </div>
-        <!-- 出力していない写真があるときだけ出す、写真の出し忘れの案内(文言は app.js が枚数を入れて設定) -->
+        <!-- 出力していない写真があるときだけ出す、写真の出し忘れの案内(文言は track-ui.js が枚数を入れて設定) -->
         <p class="modal-note" id="trackExportPhotoNote" hidden></p>
         <div class="button-group button-group-row">
           <button type="button" id="btnTrackExportSave" class="btn btn-primary" data-i18n="track.export">出力</button>
@@ -255,7 +255,7 @@
 
   <!-- 表示中の写真があるときに「クリア/追加/中止」を選ぶモーダル。
        その日の最初の撮影(カメラボタン)と、写真の読み込みで共用し、見出し・説明・ボタン文言は
-       app.js が用途に応じて設定する。閉じる(×・背景・キャンセル)は操作の中止で、写真には手を付けない -->
+       photo-ui.js が用途に応じて設定する。閉じる(×・背景・キャンセル)は操作の中止で、写真には手を付けない -->
   <div class="modal" id="photoExistingModal" hidden role="dialog" aria-modal="true" aria-labelledby="photoExistingTitle">
     <div class="modal-backdrop" data-close-modal></div>
     <div class="modal-panel" role="document">
@@ -301,10 +301,10 @@
 
   <!-- 写真の表示(地図のカメラの印・写真の一覧・撮影の直後に開く)。名前はここで変えられ、
        閉じたとき・入力を確定したとき・矢印ボタンで移るときに保存する(名前を変えた写真は未出力に戻る)。
-       見出しは「写真 n / 全数」(app.js が設定)。左右の矢印ボタンで撮影・読み込みの順に前後の写真へ移る。
+       見出しは「写真 n / 全数」(photo-view.js が設定)。左右の矢印ボタンで撮影・読み込みの順に前後の写真へ移る。
        名前の欄の右のごみ箱で表示中の写真を削除し、「一覧」で写真の一覧(タイル)へ切り替える。
        「撮影」はこの上にカメラを開いて追加で撮る(撮った写真は最後に加わり、その表示に替わる)。
-       「撮影」は「写真を撮影」ON でカメラが使えるときだけ出す(app.js の updatePhotoButtonState) -->
+       「撮影」は「写真を撮影」ON でカメラが使えるときだけ出す(photo-ui.js の updatePhotoButtonState) -->
   <div class="modal" id="photoViewModal" hidden role="dialog" aria-modal="true" aria-labelledby="photoViewTitle">
     <div class="modal-backdrop" data-close-modal></div>
     <div class="modal-panel" role="document">
@@ -346,7 +346,7 @@
 
   <!-- 写真の一覧(写真の表示の「一覧」から開く)。全部の写真を撮影・読み込みの順にタイル状に並べ、
        押すとその写真の表示を開く。タイルの画像は小さく縮めたもの(photos.js の getPhotoThumbUrl)を、
-       見える位置に来たものから順に作って入れる。見出しは「写真の一覧(n 枚)」(app.js が設定) -->
+       見える位置に来たものから順に作って入れる。見出しは「写真の一覧(n 枚)」(photo-view.js が設定) -->
   <div class="modal" id="photoListModal" hidden role="dialog" aria-modal="true" aria-labelledby="photoListTitle">
     <div class="modal-backdrop" data-close-modal></div>
     <div class="modal-panel" role="document">
@@ -496,7 +496,7 @@
             </div>
           </div>
 
-          <!-- バージョン情報。値は開いたときに app.js がその時点の最新で反映する -->
+          <!-- バージョン情報。値は開いたときに info-modal.js がその時点の最新で反映する -->
           <div class="info-item">
             <button type="button" class="info-disclosure" id="btnInfoVersion" aria-expanded="false" aria-controls="infoVersionBody">
               <span class="info-disclosure-text" data-i18n="info.versionInfo">バージョン情報</span>
@@ -597,7 +597,7 @@
                    リンクは名前ではなく Portfolio に付け、外部サイトのアイコンを添える)。
                    外部サイトのため別タブで開く。
                    外部サイトへのリンク(data-external-site)は、アプリ内の移動と混同しないよう
-                   開く前に確認画面(#externalSiteModal)を出す(app.js。値は確認文に入れる
+                   開く前に確認画面(#externalSiteModal)を出す(info-modal.js。値は確認文に入れる
                    サイト名の辞書キー) -->
               <div class="info-row">
                 <span class="info-label">
@@ -651,8 +651,8 @@
        アプリ内の移動と混同しないよう、ふだんのモーダル(緑の見出し + 半透明の背景)とは
        見た目を変え、画面全体を白で覆ってアプリの画面から離れることをはっきり示す。
        ブラウザ標準の confirm は上部に「(ドメイン)の内容」と出て消せないため使わない。
-       「開く」で別ウインドウに開き(app.js)、この画面は閉じて情報・言語モーダルに戻る。
-       サイト名・URL は開くリンクに合わせて app.js が入れる -->
+       「開く」で別ウインドウに開き(info-modal.js)、この画面は閉じて情報・言語モーダルに戻る。
+       サイト名・URL は開くリンクに合わせて info-modal.js が入れる -->
   <div class="modal modal-external" id="externalSiteModal" hidden role="alertdialog" aria-modal="true" aria-labelledby="externalSiteTitle" aria-describedby="externalSiteMessage">
     <div class="external-site-panel" role="document">
       <svg class="external-site-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -752,6 +752,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

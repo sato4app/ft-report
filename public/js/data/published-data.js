@@ -16,13 +16,14 @@
 // 手順7を先に行ってはならない。本体の取得・保存に失敗したあとに version だけが進むと、
 // 以後その端末は永久に更新されなくなる。
 
-import { setMapdataGeoJSON, setClosureGeoJSON } from './map.js';
+import { setMapdataGeoJSON, setClosureGeoJSON } from '../map/map-overlays.js';
 import { setTileManifest } from './tiles.js';
 import {
   PUBLISH_MANIFEST_URL, MAPDATA_API_URL, CLOSURE_API_URL, TILES_API_URL,
   MAPDATA_CACHE, CLOSURE_CACHE, TILES_CACHE,
   MAPDATA_VERSION_KEY, CLOSURES_VERSION_KEY, TILES_VERSION_KEY
-} from './config.js';
+} from '../common/config.js';
+import { readLocal, writeLocal } from '../common/storage.js';
 
 // データセットの定義。apply は取得したデータを地図へ反映する関数
 const DATASETS = {
@@ -202,16 +203,11 @@ async function readCache(ds) {
   }
 }
 
+// 表示済みの version(localStorage が使えない環境では毎回取得する)
 function readSavedVersion(ds) {
-  try {
-    return localStorage.getItem(ds.versionKey) || '';
-  } catch {
-    return '';
-  }
+  return readLocal(ds.versionKey) || '';
 }
 
 function writeSavedVersion(ds, version) {
-  try {
-    localStorage.setItem(ds.versionKey, version);
-  } catch { /* localStorage が使えない環境では毎回取得する */ }
+  writeLocal(ds.versionKey, version);
 }

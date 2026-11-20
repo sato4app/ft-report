@@ -10,10 +10,11 @@ import {
   CONCURRENCY, MAX_RETRIES, VERSION_STORAGE_KEY,
   TILE_AVG_KB_BY_Z, TILE_AVG_KB_FALLBACK,
   DOWNLOAD_DETAIL_ENABLED, DOWNLOAD_DETAIL_TAP_COUNT, DOWNLOAD_DETAIL_TAP_INTERVAL_MS
-} from './config.js';
-import { savePackage, listPackages, clearPackages, deletePackage } from './db.js';
-import { logHistory } from './messages.js';
-import { t } from './i18n.js';
+} from '../common/config.js';
+import { savePackage, listPackages, clearPackages, deletePackage } from '../common/db.js';
+import { logHistory } from '../common/messages.js';
+import { t } from '../common/i18n.js';
+import { readLocal, writeLocal } from '../common/storage.js';
 
 // ===== 状態 =====
 let manifest = null;
@@ -104,22 +105,24 @@ export function getManifestVersion() {
   return (manifest && manifest.version != null) ? String(manifest.version) : null;
 }
 
+// 端末にタイルを保存したときの version(未ダウンロードなら null)
 export function getSavedManifestVersion() {
-  try { return localStorage.getItem(VERSION_STORAGE_KEY); } catch { return null; }
+  return readLocal(VERSION_STORAGE_KEY);
 }
 
 function saveManifestVersion() {
-  if (!manifest || manifest.version == null) return;
-  try { localStorage.setItem(VERSION_STORAGE_KEY, String(manifest.version)); } catch { /* noop */ }
+  const version = getManifestVersion();
+  if (version !== null) writeLocal(VERSION_STORAGE_KEY, version);
 }
 
 // 保存済み version とマニフェスト version を比較し、不一致なら更新バナーを表示
 export function evaluateManifestVersion() {
   if (isDownloading) return;
-  if (!manifest || manifest.version == null) return;
+  const latest = getManifestVersion();
+  if (latest === null) return;
   const saved = getSavedManifestVersion();
   if (!saved) return; // 初回ユーザーは起動時画面の「地図データのダウンロード」から誘導する
-  if (String(manifest.version) !== saved) {
+  if (latest !== saved) {
     showUpdateBanner();
   } else {
     hideUpdateBanner();
@@ -127,9 +130,9 @@ export function evaluateManifestVersion() {
 }
 
 function showUpdateBanner() {
-  if (!manifest || manifest.version == null) return;
-  el.updateBannerMessage.textContent =
-    t('banner.tilesUpdated', { version: manifest.version });
+  const version = getManifestVersion();
+  if (version === null) return;
+  el.updateBannerMessage.textContent = t('banner.tilesUpdated', { version });
   el.updateBanner.hidden = false;
 }
 
@@ -161,8 +164,8 @@ function tileUrl(job) {
 // ===== タイルキャッシュ名解決 =====
 // 現マニフェストの version に対応する書込先キャッシュ名(version 不明時は null)
 function currentTileCacheName() {
-  if (!manifest || manifest.version == null) return null;
-  return TILE_CACHE_PREFIX + manifest.version;
+  const version = getManifestVersion();
+  return version === null ? null : TILE_CACHE_PREFIX + version;
 }
 
 // 既存の全タイルキャッシュ名(過去 version 含む)
@@ -229,12 +232,33 @@ async function onDownloadMap() {
   await runTileJob(() => startDownload(selectedLayerKeys()));
 }
 
-async function startDownload(layerKeys) {
-  if (!manifest || isDownloading) return;
+// ダウンロード・更新を始められるか(一覧を受け取っていて、実行中でない)。
+// 一覧にレイヤー情報が無いときはステータス行で知らせる
+function canStartTileJob() {
+  if (!manifest || isDownloading) return false;
   if (!manifest.layers) {
     setStatus(t('download.noLayers'), 'error');
-    return;
+    return false;
   }
+  return true;
+}
+
+// ダウンロード・更新の結果を、ステータス行(短い文言)とメッセージ履歴(後から読んで分かる文言)に出す。
+// params は両方の文言の埋め込みをまとめて渡す(使わない値は無視される)
+function reportTileJob(level, statusKey, logKey, params) {
+  setStatus(t(statusKey, params), level);
+  logHistory(t(logKey, params), level);
+}
+
+// ダウンロード・更新の後処理: 画面の表示を最新にし、保存領域の永続化を依頼する
+// (途中で止めた・一部失敗した場合も、取れたタイルは保存されているため依頼する)
+async function finishTileJob() {
+  await refreshDownloadInfo();
+  await requestPersistentStorage();
+}
+
+async function startDownload(layerKeys) {
+  if (!canStartTileJob()) return;
 
   const jobs = buildJobs(layerKeys);
   if (jobs.length === 0) {
@@ -247,18 +271,15 @@ async function startDownload(layerKeys) {
 
   const result = await runJobs(jobs);
 
+  const { completed, total } = result;
+  const failed = result.failed.length;
   if (result.aborted) {
-    setStatus(t('download.abortedStatus', {
-      completed: result.completed, total: result.total, failed: result.failed.length
-    }), 'warning');
-    logHistory(t('download.abortedLog', {
-      completed: result.completed, total: result.total
-    }), 'warning');
+    reportTileJob('warning', 'download.abortedStatus', 'download.abortedLog', { completed, total, failed });
     evaluateManifestVersion();
   } else {
     // packageId は「バージョン + レイヤー」で決定的にする。
     // 同じバージョンで同レイヤーを再ダウンロードしても upsert になり、履歴が重複しない。
-    const version = manifest.version != null ? String(manifest.version) : 'unknown';
+    const version = getManifestVersion() ?? 'unknown';
     for (const key of layerKeys) {
       const layer = manifest.layers[key];
       if (!layer) continue;
@@ -272,13 +293,11 @@ async function startDownload(layerKeys) {
         failedTiles: layerFailed
       });
     }
-    if (result.failed.length > 0) {
-      setStatus(t('download.doneWithFailures', { failed: result.failed.length }), 'warning');
-      logHistory(t('download.doneWithFailuresLog', { failed: result.failed.length }), 'warning');
+    if (failed > 0) {
+      reportTileJob('warning', 'download.doneWithFailures', 'download.doneWithFailuresLog', { failed });
       evaluateManifestVersion();
     } else {
-      setStatus(t('download.done'), 'success');
-      logHistory(t('download.doneLog'), 'success');
+      reportTileJob('success', 'download.done', 'download.doneLog');
       // 地図のバージョンは詳細地図データの有無とは無関係なので、選んだ対象を
       // 取り切れた時点で保存する(基本レイヤーだけのダウンロードでも確定する)
       saveManifestVersion();
@@ -286,19 +305,13 @@ async function startDownload(layerKeys) {
     }
   }
 
-  await refreshDownloadInfo();
-  // 途中で止めた・一部失敗した場合も、取れたタイルは保存されているため依頼する
-  await requestPersistentStorage();
+  await finishTileJob();
 }
 
 // ===== マニフェスト更新DL(差分 / 全部) =====
 // 更新バナーのボタンからのみ呼ばれる(モジュール内で完結)
 async function startManifestUpdate(mode) {
-  if (!manifest || isDownloading) return;
-  if (!manifest.layers) {
-    setStatus(t('download.noLayers'), 'error');
-    return;
-  }
+  if (!canStartTileJob()) return;
 
   const allJobs = buildJobs(updatableLayerKeys());
   let jobs = allJobs;
@@ -319,8 +332,7 @@ async function startManifestUpdate(mode) {
   hideUpdateBanner();
 
   if (jobs.length === 0) {
-    setStatus(t('download.upToDate'), 'success');
-    logHistory(t('download.upToDateLog'), 'success');
+    reportTileJob('success', 'download.upToDate', 'download.upToDateLog');
     saveManifestVersion();
     await refreshDownloadInfo();
     return;
@@ -334,27 +346,21 @@ async function startManifestUpdate(mode) {
   setStatus(t('download.updateStarted', { label, n: jobs.length }), '');
 
   const result = await runJobs(jobs, { overwrite });
+  const { completed, total } = result;
+  const failed = result.failed.length;
 
   if (result.aborted) {
-    setStatus(t('download.abortedStatus', {
-      completed: result.completed, total: result.total, failed: result.failed.length
-    }), 'warning');
-    logHistory(t('download.updateAbortedLog', {
-      label, completed: result.completed, total: result.total
-    }), 'warning');
+    reportTileJob('warning', 'download.abortedStatus', 'download.updateAbortedLog', { label, completed, total, failed });
     showUpdateBanner();
-  } else if (result.failed.length > 0) {
-    setStatus(t('download.updateDoneWithFailures', { label, failed: result.failed.length }), 'warning');
-    logHistory(t('download.updateDoneWithFailuresLog', { label, failed: result.failed.length }), 'warning');
+  } else if (failed > 0) {
+    reportTileJob('warning', 'download.updateDoneWithFailures', 'download.updateDoneWithFailuresLog', { label, failed });
     showUpdateBanner();
   } else {
-    setStatus(t('download.updateDone', { label }), 'success');
-    logHistory(t('download.updateDoneLog', { label }), 'success');
+    reportTileJob('success', 'download.updateDone', 'download.updateDoneLog', { label });
     saveManifestVersion();
   }
 
-  await refreshDownloadInfo();
-  await requestPersistentStorage();
+  await finishTileJob();
 }
 
 // ===== ジョブ実行(共通ワーカーループ) =====
@@ -491,7 +497,7 @@ async function onClearCache() {
       await caches.delete(name);
     }
     await clearPackages();
-    try { localStorage.removeItem(VERSION_STORAGE_KEY); } catch { /* noop */ }
+    writeLocal(VERSION_STORAGE_KEY, null);
     hideUpdateBanner();
     setStatus(t('download.cleared'), 'success');
     await refreshDownloadInfo();
@@ -534,7 +540,7 @@ export async function migrateLegacyPackages() {
 // ===== バージョン行・サイズ行 =====
 // ダウンロードモーダルの表示を最新にする。キャッシュ済みタイルの走査は重いので
 // ここでだけ行い、詳細トグルの切替(updateSizeRow)では走査済みの集合を使い回す。
-export async function refreshDownloadInfo() {
+async function refreshDownloadInfo() {
   updateVersionRow();
   try {
     cachedTileUrls = await getCachedTileUrlSet();

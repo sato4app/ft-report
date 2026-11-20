@@ -6,11 +6,12 @@
 // 画面の中で撮るので、撮影中もスリープ防止と位置の監視が続く。
 //
 // このモジュールは撮影だけを担い、撮った画像(JPEG)と撮影時刻を onShot に渡す。
-// 位置の取得・保存・地図への表示は app.js / photos.js が行う。
+// 位置の取得・保存・地図への表示は photo-ui.js / photos.js が行う。
 // 1回開くごとに1枚だけ撮る。シャッターを押すと映像をその場で止め(撮ったコマを見せたまま)、
-// 保存が済んだら app.js がカメラを閉じて、撮った写真の表示を開く(続けて撮るときは写真の表示の「撮影」から)。
-import { PHOTO_MAX_EDGE_PX, PHOTO_JPEG_QUALITY, CAMERA_IDLE_CLOSE_SEC } from './config.js';
-import { t } from './i18n.js';
+// 保存が済んだら photo-ui.js がカメラを閉じて、撮った写真の表示を開く(続けて撮るときは写真の表示の「撮影」から)。
+import { PHOTO_MAX_EDGE_PX, PHOTO_JPEG_QUALITY, CAMERA_IDLE_CLOSE_SEC } from '../common/config.js';
+import { t } from '../common/i18n.js';
+import { errorText, drawToJpeg } from '../common/utils.js';
 
 const el = {
   overlay: document.getElementById('cameraOverlay'),
@@ -33,7 +34,7 @@ export function isCameraSupported() {
   return !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') && !!el.overlay;
 }
 
-export function isCameraOpen() {
+function isCameraOpen() {
   return !!el.overlay && !el.overlay.hidden;
 }
 
@@ -61,7 +62,7 @@ export async function openCamera(options = {}) {
   } catch (err) {
     closeCamera();
     const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
-    handlers.onError?.(denied ? t('camera.denied') : t('camera.failed', { message: err?.message || err?.name || '' }));
+    handlers.onError?.(denied ? t('camera.denied') : t('camera.failed', { message: errorText(err) }));
     return;
   }
   // 許可を尋ねている間に閉じられていたら、取れた映像はすぐ止める
@@ -119,24 +120,22 @@ function takeShot() {
   };
   const timeMs = Date.now();
   const scale = Math.min(1, PHOTO_MAX_EDGE_PX / Math.max(video.videoWidth, video.videoHeight));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(video.videoWidth * scale);
-  canvas.height = Math.round(video.videoHeight * scale);
-  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const jpeg = drawToJpeg(video,
+    Math.round(video.videoWidth * scale), Math.round(video.videoHeight * scale), PHOTO_JPEG_QUALITY);
   // 撮れたことが分かるよう、画面を一瞬白く光らせる
   el.flash.classList.remove('is-flashing');
   void el.flash.offsetWidth;
   el.flash.classList.add('is-flashing');
   // 撮ったコマを見せたまま止める(保存を待つ間の画面)
   video.pause();
-  canvas.toBlob((blob) => {
+  jpeg.then((blob) => {
     if (!blob) {
       closeIfWaiting();
       handlers.onError?.(t('camera.failed', { message: 'toBlob' }));
       return;
     }
     handlers.onShot?.({ blob, timeMs, closeIfWaiting });
-  }, 'image/jpeg', PHOTO_JPEG_QUALITY);
+  });
 }
 
 if (el.overlay) {

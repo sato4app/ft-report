@@ -4,7 +4,7 @@
 // - app-shell-{日付}.{連番}: アプリシェル(HTML/CSS/JS、CDN、アイコン)。取得戦略は handleShellRequest。
 // 公開API(/api/*)は横取りしない。取得とキャッシュはアプリ側(published-data.js)が version を見て行う。
 
-const SHELL_CACHE = 'app-shell-2026-11-20.5';
+const SHELL_CACHE = 'app-shell-2026-11-20.6';
 const TILE_CACHE_PREFIX = 'gsi-';
 const SHELL_CACHE_PREFIX = 'app-shell-';
 
@@ -29,31 +29,52 @@ const REVISIONS_KEY = './__shell-revisions__';
 // (オンラインでは気づけない)。
 const APP_MANAGED_CACHES = ['mapdata-cache', 'closures-cache', 'tiles-cache'];
 
-// 同一オリジンの相対パス
+// 同一オリジンの相対パス。JS モジュールは js/ 配下に機能別のフォルダで置く(js/app.js の先頭の一覧)
 const SHELL_LOCAL_PATHS = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
-  './map.js',
-  './geolocation.js',
-  './camera.js',
-  './photos.js',
-  './photo-zoom.js',
-  './kmz.js',
-  './published-data.js',
-  './db.js',
-  './config.js',
-  './i18n.js',
-  './messages.js',
-  './update.js',
-  './tiles.js',
-  './marker-settings.js',
-  './qrcode.js',
-  './guide.js',
-  './faq.js',
-  './faq-text.js',
-  './version-history.js',
+  './css/style.css',
+  './js/app.js',
+  // 共通(設定・言語・端末への保存・メッセージ・画面部品)
+  './js/common/config.js',
+  './js/common/i18n.js',
+  './js/common/storage.js',
+  './js/common/utils.js',
+  './js/common/db.js',
+  './js/common/messages.js',
+  './js/common/ui.js',
+  './js/common/page-guard.js',
+  './js/common/file-export.js',
+  // 地図・現在地・表示設定パネル・マーカーの設定
+  './js/map/map.js',
+  './js/map/map-overlays.js',
+  './js/map/marker-icons.js',
+  './js/map/one-finger-zoom.js',
+  './js/map/geolocation.js',
+  './js/map/layer-panel.js',
+  './js/map/marker-settings.js',
+  // 移動経路
+  './js/track/track.js',
+  './js/track/track-ui.js',
+  './js/track/gpx.js',
+  // 写真
+  './js/photo/photos.js',
+  './js/photo/photo-ui.js',
+  './js/photo/photo-view.js',
+  './js/photo/photo-zoom.js',
+  './js/photo/camera.js',
+  './js/photo/kmz.js',
+  // 配信データ・オフライン地図・アプリの更新
+  './js/data/published-data.js',
+  './js/data/tiles.js',
+  './js/data/update.js',
+  // 起動時画面から開く案内(情報・言語・使い方・QR)
+  './js/info/info-modal.js',
+  './js/info/faq.js',
+  './js/info/faq-text.js',
+  './js/info/version-history.js',
+  './js/info/guide.js',
+  './js/info/qrcode.js',
   './manifest.webmanifest',
   './manifest-en.webmanifest',   // スマホの言語が日本語以外のときの manifest(index.html で切替)
   './icons/icon-192-v2.png',
@@ -75,6 +96,10 @@ const SHELL_LOCAL_PATHS = [
 //                                  import している。方角は示す向きが安定しないため 2026-09-04 に廃止した
 // なお起動画像の元データ(.odg)は public/ ではなく assets/ に置く(public/ は全ファイルが
 //   配信されるため)。差し替えの手順は docs/deployGuide-202609.md の 5.3。
+// 2026-11-20(app-shell-2026-11-20.6)に、ルート直下にあった JS・CSS を js/・css/ の下へ移した。
+//   それより前の版のシェルキャッシュは、旧 index.html・旧 app.js と、それらが import するモジュールを
+//   すべて自分のキャッシュに持つ(過去の版で import 先がシェル一覧から漏れていないことを確認済み)。
+//   旧版の画面は自分のキャッシュだけで動くため、ルート直下の旧ファイルは残していない。
 
 // 外部CDN(完全URL一致で判定)
 const SHELL_CDN_URLS = [

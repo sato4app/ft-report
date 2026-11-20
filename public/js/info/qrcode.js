@@ -12,7 +12,7 @@
 //   → 8種のマスクを試して減点法で最良を選択 → 形式情報・型番情報の書き込み
 
 // 誤り訂正レベル。数字は形式情報に書き込むビット値(JIS の規定値で、レベルの序列とは異なる)
-export const ECC_LEVELS = {
+const ECC_LEVELS = {
   L: { name: 'L', formatBits: 1, index: 0 },
   M: { name: 'M', formatBits: 0, index: 1 },
   Q: { name: 'Q', formatBits: 3, index: 2 },
@@ -60,7 +60,7 @@ const PENALTY_N4 = 10;  // 明暗の割合の偏り
 
 // 文字列から QRコードのモジュール行列を作る。
 // 戻り値は { size, modules }(modules[y][x] が true なら黒)
-export function buildQrMatrix(text, { ecc = 'M' } = {}) {
+function buildQrMatrix(text, { ecc = 'M' } = {}) {
   const level = ECC_LEVELS[ecc] || ECC_LEVELS.M;
   const data = new TextEncoder().encode(String(text));
   const version = selectVersion(data.length, level);

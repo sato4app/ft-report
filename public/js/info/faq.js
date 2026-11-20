@@ -2,25 +2,19 @@
 // 情報・言語/Info & Language の各項目を開いたとき、faq-text.js の内容を組み立てて表示する
 // (showNotices / showQuestions)。
 
-import { getLang } from './i18n.js';
+import { getLang, pickLang } from '../common/i18n.js';
 import { FAQ_NOTICES, FAQ_SECTIONS } from './faq-text.js';
-
-// 表示言語の文言を取り出す。未訳のときは日本語で出す(空欄にはしない)
-function pick(entry) {
-  const lang = getLang();
-  return entry[lang] ?? entry.ja;
-}
 
 // ご利用の注意のうち id を付けた項目の文言を、表示言語で返す(無ければ空文字)。
 // 同じ注意を他の画面(トーストなど)でも出すときに使い、文言を二重に持たないようにする
 export function getNoticeText(id) {
   const notice = FAQ_NOTICES.find((n) => n.id === id);
-  return notice ? pick(notice.text) : '';
+  return notice ? pickLang(notice.text) : '';
 }
 
 let noticesBuilt = false;
 let questionsBuilt = false;
-// 「よくある質問」を開く処理(app.js から受け取る。参照リンクで移る前に、閉じていれば開くため)
+// 「よくある質問」を開く処理(info-modal.js から受け取る。参照リンクで移る前に、閉じていれば開くため)
 let openQuestions = null;
 
 // 1問(質問と答え)のまとまりの id(参照リンク「→Q5」の飛び先)。
@@ -70,7 +64,7 @@ function buildNotices() {
   const separator = getLang() === 'en' ? ', ' : '・';
   for (const notice of FAQ_NOTICES) {
     const li = document.createElement('li');
-    li.textContent = pick(notice.text);
+    li.textContent = pickLang(notice.text);
     const ref = document.createElement('span');
     ref.className = 'faq-ref';
     ref.append('→');
@@ -104,7 +98,7 @@ function buildQuestions() {
   for (const section of FAQ_SECTIONS) {
     const heading = document.createElement('h4');
     heading.className = 'faq-section-title';
-    heading.textContent = pick(section.title);
+    heading.textContent = pickLang(section.title);
     fragment.append(heading);
 
     for (const item of section.items) {
@@ -115,13 +109,13 @@ function buildQuestions() {
       q.className = 'faq-q';
       const text = document.createElement('span');
       text.className = 'faq-q-text';
-      text.textContent = `${item.id}. ${pick(item.q)}`;
+      text.textContent = `${item.id}. ${pickLang(item.q)}`;
       q.append(text);
       details.append(q);
       for (const paragraph of item.a) {
         const a = document.createElement('p');
         a.className = 'faq-a';
-        a.textContent = pick(paragraph);
+        a.textContent = pickLang(paragraph);
         details.append(a);
       }
       fragment.append(details);
@@ -134,7 +128,7 @@ function buildQuestions() {
 function buildLead(text) {
   const lead = document.createElement('p');
   lead.className = 'faq-lead';
-  lead.textContent = pick(text);
+  lead.textContent = pickLang(text);
   return lead;
 }
 

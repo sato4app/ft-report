@@ -1,19 +1,25 @@
-// 現在地表示 + 移動記録(移動経路の記録)モジュール
+// 現在地表示モジュール
 // - 現在地マーカー(青丸)と地図の追従。監視の要否は needLocationWatch、追従の条件は shouldFollowMap。
 //   測位精度(accuracy)を半径とする精度円は出さない(大きさが測位状況で変わり、意味が伝わらないため)。
 // - 現在地点表示ボタンの単発表示(showCurrentLocationSpot)。
-// - 移動経路の記録。経路は複数持てる(1回の記録、または読み込んだGPXの1セグメントが1本)。
-//   記録中は画面スリープを防ぎ、起動時画面へ移っても記録を続ける。表示中の経路は端末に保存する。
+// - 移動経路の記録の開始・停止(startTrackRecording / stopTrackRecording)。記録には現在地の監視が
+//   要るため、監視の制御とあわせてここから行う。経路のデータと描画は track.js が持つ。
 // - 写真の撮影地点(撮影時の位置の取り直し)。写真そのものは photos.js が持ち、経路とは結び付けない。
 import * as L from 'leaflet';
+import { getMap, ensureMapSize, msSinceMapInteraction, setOnMapInteractionEnd } from './map.js';
+import { isOneFingerZooming, setOneFingerZoomAroundCenter } from './one-finger-zoom.js';
+import { buildMarkerIcon } from './marker-icons.js';
 import {
-  getMap, buildMarkerIcon, ensureMapSize, fitMapToLatLngs,
-  isOneFingerZooming, setOneFingerZoomAroundCenter,
-  msSinceMapInteraction, setOnMapInteractionEnd
-} from './map.js';
-import { saveLatestTrack, loadLatestTrack, clearLatestTrack } from './db.js';
-import { PHOTO_POSITION_TIMEOUT_MS, FOLLOW_RESUME_IDLE_SEC } from './config.js';
-import { t } from './i18n.js';
+  isTrackRecording, beginRecording, seedRecording, recordFix, endRecording,
+  requestWakeLock, setLiveLatLngSource
+} from '../track/track.js';
+import { PHOTO_POSITION_TIMEOUT_MS, FOLLOW_RESUME_IDLE_SEC } from '../common/config.js';
+import { t } from '../common/i18n.js';
+
+// 測位の設定。監視(watchPosition)と現在地点表示ボタンは直近 5 秒以内の位置を使ってよい。
+// 記録の復帰時・撮影時は、その場の位置を取り直す(maximumAge: 0)
+const GEO_OPTIONS = { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 };
+const FRESH_GEO_OPTIONS = { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 };
 
 let currentLocationMarker = null;
 let geoWatchId = null;
@@ -47,433 +53,30 @@ const LAST_FIX_MAX_AGE_MS = 30 * 1000;
 let locationErrorCb = null;
 let locationErrorReported = false;
 
-// 移動記録(移動経路)
-// 「移動した」の判定: 直近の記録点から 20m 以上離れたか、1 分以上経過した場合に記録
-const TRACK_MIN_DISTANCE_M = 20;
-const TRACK_MIN_INTERVAL_MS = 60 * 1000;
-// 記録点にしない測位(外れ値)の判定。表示(青丸・三角・現在地点までの線)は従来どおり更新し、
-// 記録点として残すかだけをここで絞る。
-// - 測位精度がこれより悪い位置は記録しない。他のアプリから戻った直後など GPS を捕まえ直すまでは
-//   Wi-Fi・基地局による概算位置(誤差 100m 以上)が先に届き、そのまま記録すると経路が飛んで戻る。
-//   森や谷では GPS でも 30m 台になることがあるため、それより少し緩めにする
-const TRACK_MAX_ACCURACY_M = 50;
-// - 直近の記録点からの速さがこれを超える位置は記録しない(歩行ではありえない飛び)。
-//   時間は測位時刻の差で測るので、長く他のアプリを開いていた後の正しい移動は残る。
-//   誤って残った記録点に引きずられても、時間がたてば速さが下がり記録が再開する
-const TRACK_MAX_SPEED_MPS = 5;
-let isRecordingTrack = false;
-// 移動経路(経路)の一覧。1本 = 1回の記録、または読み込んだGPXの1セグメント。
-// 各要素は次の形: {
-//   polyline:    記録点を順に結ぶ線(移動記録経路)
-//   startMarker: 開始点マーカー(最初の記録点)
-//   endMarker:   終了点マーカー(最終記録点・進行方向つき。記録中はライブ現在地)
-//   times:       各記録点の記録時刻(ms)。polyline の頂点と同順で保持し、
-//                GPX出力の <time> と、出力ファイル名の日付の決定に使う
-//   names:       各記録点の名前(頂点と同順。撮影地点として入れた点だけ写真の名前、他は null)。
-//                GPX出力の <trkpt> の <name> に使う
-// }
-let tracks = [];
-// 記録中の経路(常に tracks の末尾)。記録していないときは null。
-let recordingTrack = null;
-// 最終記録地点と現在地点(ライブ)を結ぶ線。記録条件(20m/60秒)を満たすまでは
-// 記録点が増えないため、この線が無いと経路が現在地まで届かず途切れて見える。
-// 移動記録経路と同じスタイルで描き、記録停止・クリア時は消す。
-let trackLeadLine = null;
-let trackStyle = null;           // 線のスタイル(移動記録経路)
-let trackStartStyle = null;      // 開始点マーカーのスタイル(移動記録開始点)
-let trackCurrentStyle = null;    // 終了点マーカーのスタイル(移動記録現在地点)
-// 記録中の経路について、直近に記録した地点と時刻(記録条件の判定に使う)。
-// 経路を新しく作るたびにリセットし、新しい経路の1点目は必ず記録する。
-let lastTrackLatLng = null;
-let lastTrackTimeMs = 0;
+// 記録中の経路の三角は、スタイルを変えたとき直近の現在地へ置き直す(track.js)
+setLiveLatLngSource(() => lastKnownLatLng);
 
-// 移動記録経路(線)の描画オプション。経路本体と、現在地点までを結ぶ線で共用する。
-function trackLineOptions() {
-  return {
-    color: trackStyle?.color || '#000080',
-    weight: trackStyle?.size || 4,
-    opacity: 0.85
-  };
-}
-
-export function setTrackStyle(style) {
-  trackStyle = style;
-  const { color, weight } = trackLineOptions();
-  for (const track of tracks) track.polyline.setStyle({ color, weight });
-  if (trackLeadLine) trackLeadLine.setStyle({ color, weight });
-}
-
-// 移動記録開始点マーカーのスタイル。全経路の既存マーカーへ即時反映。
-export function setTrackStartStyle(style) {
-  trackStartStyle = style;
-  const icon = buildShapeIcon(trackStartStyle, 'square');
-  for (const track of tracks) {
-    if (track.startMarker) track.startMarker.setIcon(icon);
-  }
-}
-
-// 移動記録現在地点(終了点)マーカーのスタイル。全経路の既存マーカーへ即時反映
-// (進行方向を再計算。記録中の経路はライブ現在地の位置を保つ)。
-export function setTrackCurrentStyle(style) {
-  trackCurrentStyle = style;
-  for (const track of tracks) {
-    if (!track.endMarker) continue;
-    updateTrackEndMarker(track, track === recordingTrack ? lastKnownLatLng : null);
-  }
-}
-
-// 移動記録系マーカー用 divIcon を生成(map.js の共通関数に既定値を渡す薄いラッパー)
-function buildShapeIcon(style, fallbackShape, rotationDeg = 0) {
-  return buildMarkerIcon(style, {
-    fallbackShape,
-    fallbackColor: '#000080',
-    fallbackSize: 8,
-    rotationDeg
-  });
-}
-
-// 2点間の方位角(度・北=0、時計回り)。三角マーカーの回転に用いる。
-function bearingDeg(a, b) {
-  const toRad = (d) => d * Math.PI / 180;
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
-
-// 進行方向: 過去最大3点(記録点)の平均座標から、現在位置へ向かう方位。
-// current は現在位置(記録中はライブ現在地、停止後は最終記録点)。
-// 方向が定まらない(平均と現在が同じ等)場合は 0(北・上向き)を返す。
-function computeHeading(latlngs, current) {
-  const n = latlngs.length;
-  if (n === 0) return 0;
-  const k = Math.min(3, n);
-  const recent = latlngs.slice(n - k);
-  let lat = 0;
-  let lng = 0;
-  for (const p of recent) { lat += p.lat; lng += p.lng; }
-  const avg = { lat: lat / k, lng: lng / k };
-  if (Math.abs(avg.lat - current.lat) < 1e-9 && Math.abs(avg.lng - current.lng) < 1e-9) return 0;
-  return bearingDeg(avg, current);
-}
-
-// 経路の終了点マーカー(三角)を配置し、進行方向に回転させる。
-// liveLatLng を与えると現在地(ライブ)へ、無ければ最終記録点へ配置する。
-function updateTrackEndMarker(track, liveLatLng) {
-  const map = getMap();
-  if (!track || !map) return;
-  const latlngs = track.polyline.getLatLngs();
-  if (latlngs.length === 0) return;
-  const pos = liveLatLng ? L.latLng(liveLatLng) : latlngs[latlngs.length - 1];
-  const icon = buildShapeIcon(trackCurrentStyle, 'triangle', computeHeading(latlngs, pos));
-  if (!track.endMarker) {
-    track.endMarker = L.marker(pos, { icon }).addTo(map);
-  } else {
-    track.endMarker.setLatLng(pos);
-    track.endMarker.setIcon(icon);
-  }
-}
-
-// 記録中の経路をライブ現在地へ追従させる(終了点マーカーと、最終記録点からの線)。
-function updateRecordingLive(latlng) {
-  if (!recordingTrack) return;
-  updateTrackEndMarker(recordingTrack, latlng);
-  updateTrackLeadLine(recordingTrack, latlng);
-}
-
-// 最終記録地点 → 現在地点(ライブ)を結ぶ線を更新する。
-// live が null(記録停止時など)のとき、また現在地が最終記録地点とほぼ同じ位置の
-// ときは線を消す(長さ 0 の線が点として残るのを避けるため)。
-function updateTrackLeadLine(track, live) {
-  const map = getMap();
-  const latlngs = track ? track.polyline.getLatLngs() : [];
-  if (!map || !live || latlngs.length === 0) {
-    removeTrackLeadLine();
-    return;
-  }
-  const last = latlngs[latlngs.length - 1];
-  if (last.distanceTo(live) < 0.5) {
-    removeTrackLeadLine();
-    return;
-  }
-  if (!trackLeadLine) {
-    trackLeadLine = L.polyline([last, live], trackLineOptions()).addTo(map);
-  } else {
-    trackLeadLine.setLatLngs([last, live]);
-  }
-}
-
-function removeTrackLeadLine() {
-  if (trackLeadLine) {
-    getMap()?.removeLayer(trackLeadLine);
-    trackLeadLine = null;
-  }
-}
-
+// ===== 移動経路の記録の開始・停止 =====
 // 移動記録を開始する。1回の記録が1本の経路になる。
 // append=false: 表示中の経路をすべてクリアしてから記録する
 // append=true : 表示中の経路を残し、新しい経路として追加で記録する
 export function startTrackRecording({ append = false } = {}) {
-  const map = getMap();
-  if (!map) return;
-  if (!append) clearTrack();
-  isRecordingTrack = true;
-  // 記録中は画面を消灯させない(消灯するとページが停止し記録が途切れるため)
-  requestWakeLock();
+  if (!getMap()) return;
+  beginRecording({ append });
   // マーカー表示・追従が両方 OFF でも、記録のため現在地監視を確実に開始する。
   refreshLocationWatch();
-  recordingTrack = createTrack();
   // 新しく精度も十分な現在地が取得済なら、最初の点として打つ(待たずに描画開始する)。
   // 青丸は消さない。表示するかは「現在地点をマーカー表示」トグルだけで決まる。
-  if (isLastFixFresh() && isAccurateForTrack(lastKnownAccuracyM)) {
-    appendTrackPoint(recordingTrack, lastKnownLatLng, lastFixTimeMs);
-    updateRecordingLive(lastKnownLatLng);
-  }
-}
-
-// 空の経路を1本作って一覧の末尾に追加する。
-// 記録条件の判定用の直近地点もリセットし、この経路の1点目を必ず記録させる。
-function createTrack() {
-  const track = {
-    polyline: L.polyline([], trackLineOptions()).addTo(getMap()),
-    startMarker: null,
-    endMarker: null,
-    times: [],
-    names: []
-  };
-  tracks.push(track);
-  lastTrackLatLng = null;
-  lastTrackTimeMs = 0;
-  return track;
-}
-
-// 経路の表示物(線・開始点・終了点)を地図から取り除く
-function removeTrackLayers(track) {
-  const map = getMap();
-  if (!map || !track) return;
-  map.removeLayer(track.polyline);
-  if (track.startMarker) map.removeLayer(track.startMarker);
-  if (track.endMarker) map.removeLayer(track.endMarker);
-}
-
-// 記録点にしてよい測位精度か。精度が得られない(非数)ときは判定できないため通す
-function isAccurateForTrack(accuracyM) {
-  return !Number.isFinite(accuracyM) || accuracyM <= TRACK_MAX_ACCURACY_M;
-}
-
-// 記録判定。外れ値を除いたうえで、直近の記録点から 20m 以上離れた、または 1 分以上経過していれば記録対象。
-// fixTimeMs は測位時刻(fixTimeOf)、accuracyM は測位精度[m]。
-function shouldRecordTrackPoint(latlng, fixTimeMs, accuracyM) {
-  // 精度の悪い測位(概算位置)は記録しない
-  if (!isAccurateForTrack(accuracyM)) return false;
-  if (!lastTrackLatLng) return true;
-  const elapsedMs = fixTimeMs - lastTrackTimeMs;
-  // 直近の記録点より古い(または同時刻の)測位は記録しない
-  if (elapsedMs <= 0) return false;
-  const distance = L.latLng(latlng).distanceTo(L.latLng(lastTrackLatLng));
-  // 歩行ではありえない速さの移動(飛び)は記録しない
-  if (distance / (elapsedMs / 1000) > TRACK_MAX_SPEED_MPS) return false;
-  if (distance >= TRACK_MIN_DISTANCE_M) return true;
-  if (elapsedMs >= TRACK_MIN_INTERVAL_MS) return true;
-  return false;
+  if (isLastFixFresh()) seedRecording(lastKnownLatLng, lastFixTimeMs, lastKnownAccuracyM);
 }
 
 export function stopTrackRecording() {
-  isRecordingTrack = false;
-  // 記録が終わったら画面スリープ防止を解除する(電池消費を元に戻す)
-  releaseWakeLock();
-  if (recordingTrack) {
-    if (recordingTrack.polyline.getLatLngs().length === 0) {
-      // 位置が一度も取得できずに終わった経路は、地点数0の経路として残さず破棄する
-      removeTrackLayers(recordingTrack);
-      tracks = tracks.filter((tr) => tr !== recordingTrack);
-    } else {
-      // 三角(終了点)を最終記録点へスナップして固定する。
-      updateTrackEndMarker(recordingTrack);
-    }
-  }
-  removeTrackLeadLine();
-  recordingTrack = null;
-  // 地点数0の経路を破棄した場合に備え、保存内容を現在の表示に合わせ直す
-  saveTrackToStorage();
+  endRecording();
   // マーカー表示 ON なら現在地(青丸)を最新位置に合わせておく
   // (記録中も出しているので通常は既にあるが、無ければここで出す)。
   if (showCurrentMarker && lastKnownLatLng) showOrUpdateCurrentMarker(lastKnownLatLng);
   // 記録が監視を要求しなくなった場合に備えて監視状態を見直す。
   refreshLocationWatch();
-}
-
-// 1本の経路の統計(記録地点数・移動距離[m])
-function statsOfTrack(track) {
-  const latlngs = track.polyline.getLatLngs();
-  let distanceM = 0;
-  for (let i = 1; i < latlngs.length; i++) {
-    distanceM += latlngs[i - 1].distanceTo(latlngs[i]);
-  }
-  return { pointCount: latlngs.length, distanceM };
-}
-
-// 経路ごとの統計を、表示順(記録・読み込みの順)で返す。
-// 軌跡が消去(clearTrack)される前に呼ぶこと。
-export function getTrackStatsList() {
-  return tracks.map(statsOfTrack);
-}
-
-// 全経路を合わせた統計(記録地点数・合計移動距離[m])を返す。
-// 軌跡が消去(clearTrack)される前に呼ぶこと。
-export function getTrackStats() {
-  return getTrackStatsList().reduce(
-    (acc, s) => ({ pointCount: acc.pointCount + s.pointCount, distanceM: acc.distanceM + s.distanceM }),
-    { pointCount: 0, distanceM: 0 }
-  );
-}
-
-// 記録済みの移動経路を、経路ごとの点列({lat, lng, timeMs, name})の配列で返す(GPX出力に使用)。
-// name は読み込んだ GPX の記録点に名前が付いていたときだけ入る(他は null。以前の版は撮影地点の
-// 記録点に写真の名前を付けていたため、そうした GPX を読み込み直しても名前を失わないよう保持する)。
-// 軌跡が消去(clearTrack)される前に呼ぶこと。
-export function getTrackSegments() {
-  return tracks.map((track) => track.polyline.getLatLngs().map((ll, i) => ({
-    lat: ll.lat,
-    lng: ll.lng,
-    timeMs: track.times[i] ?? null,
-    name: track.names[i] ?? null
-  })));
-}
-
-// 外部から読み込んだ移動経路を、記録済みの経路として描画する。
-// segments は経路ごとの点列({lat, lng, timeMs, name})の配列で、1セグメントが1本の経路になる
-// (name は任意。記録点の名前として保持し、再出力で <name> に戻す)。
-// append=false: 表示中の経路をすべてクリアして置き換える
-// append=true : 表示中の経路を残し、続きの経路として追加する
-// (いずれも記録中は呼ばない。呼び出し側で抑止すること)
-// 記録時刻はファイルの値をそのまま保持するため、読み込んだ経路をそのまま
-// 「出力」で再出力できる。描画できた地点数の合計を返す。
-export function loadTrackSegments(segments, { append = false } = {}) {
-  const map = getMap();
-  if (!map) return 0;
-  const validSegments = (segments || [])
-    .map((seg) => (seg || []).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)))
-    .filter((seg) => seg.length > 0);
-  if (validSegments.length === 0) return 0;
-
-  if (!append) clearTrack();
-
-  let loaded = 0;
-  for (const seg of validSegments) {
-    const track = createTrack();
-    track.polyline.setLatLngs(seg.map((p) => [p.lat, p.lng]));
-    track.times = seg.map((p) => (Number.isFinite(p.timeMs) ? p.timeMs : null));
-    track.names = seg.map((p) => (typeof p.name === 'string' && p.name ? p.name : null));
-    track.startMarker = L.marker([seg[0].lat, seg[0].lng], {
-      icon: buildShapeIcon(trackStartStyle, 'square')
-    }).addTo(map);
-    // 終了点マーカー(三角)は最終地点へ。ライブ現在地は渡さないので中間線も出ない。
-    updateTrackEndMarker(track);
-    loaded += seg.length;
-  }
-  // 読み込み(記録ではない)ことを伝える。app.js は記録で増えたときだけ未出力にする
-  onTrackPointAppended?.({ recorded: false });
-  saveTrackToStorage();
-  return loaded;
-}
-
-// 表示中の移動経路(全経路)の全体が収まるよう地図を合わせる(読み込み直後に使う)
-export function fitMapToTrack() {
-  const bounds = tracks.reduce((acc, track) => acc.extend(track.polyline.getBounds()), L.latLngBounds([]));
-  fitMapToLatLngs([], bounds);
-}
-
-// 移動記録の表示(全経路の線・開始点・終了点)を全削除する。
-// 「移動経路をクリア」ボタンと、記録・読み込みでの置き換え時に呼び出す
-// (トグル OFF では消さない)。
-export function clearTrack() {
-  isRecordingTrack = false;
-  releaseWakeLock();
-  for (const track of tracks) removeTrackLayers(track);
-  tracks = [];
-  recordingTrack = null;
-  removeTrackLeadLine();
-  lastTrackLatLng = null;
-  lastTrackTimeMs = 0;
-  // 表示が空になったので、端末の保存も消す
-  saveTrackToStorage();
-}
-
-// ===== 移動経路の保存(端末内・IndexedDB) =====
-// 表示中の経路を、変化のたびに端末へ上書き保存する。保存するのは常に最新の
-// 内容1件だけで、過去の記録は残さない(→ db.js の tracks ストア)。
-// これが無いと、再読み込みやアプリの終了で記録が黙って消える。Web ページは
-// 離脱時に破棄され、メモリ上の経路も一緒に失われるためである。
-// 保存できなくても記録・表示はそのまま続けられるので、失敗は握りつぶす
-// (プライベートウィンドウ等、IndexedDB を使えない環境でも動かすため)。
-//
-// 保存を呼ぶのは経路が変わる4か所: 記録点の追加・記録の停止・GPXの読み込み・クリア。
-// 記録点は「20m 以上移動」または「60秒以上経過」でしか増えないため、
-// 書き込みの頻度は数分に1回程度で、まとめ書き(デバウンス)は要らない。
-
-// 復元中は保存しない。復元は loadTrackSegments 経由で clearTrack を通るため、
-// そのままだと読み出したばかりの内容をいったん消して書き直すことになる。
-let restoringTrack = false;
-
-function saveTrackToStorage() {
-  if (restoringTrack) return;
-  // 地点0の経路(記録開始直後で1点も取れていない経路)は保存しない
-  const segments = getTrackSegments().filter((seg) => seg.length > 0);
-  const saving = segments.length > 0 ? saveLatestTrack(segments) : clearLatestTrack();
-  saving.catch(() => { /* 保存できなくても記録は続ける */ });
-}
-
-// 起動時に1回だけ呼ぶ。端末に保存済みの経路を読み出して地図に描く。
-// 記録は再開しない(ページが動いていない間の位置は取得できず、途切れた経路を
-// 記録中として続けると実際の移動と食い違うため)。常に停止した状態で戻す。
-// 描いた地点数の合計を返す(0 なら保存が無かった、または読めなかった)。
-export async function restoreSavedTrack() {
-  let segments = [];
-  try {
-    segments = await loadLatestTrack();
-  } catch {
-    return 0;
-  }
-  if (segments.length === 0) return 0;
-  restoringTrack = true;
-  try {
-    return loadTrackSegments(segments);
-  } finally {
-    restoringTrack = false;
-  }
-}
-
-// 記録点追加時の通知先(app.js がパネル内の統計表の更新と、未出力の印に使用)。
-// 引数の recorded は、記録で増えた(true)か、読み込みで描いた(false)か
-let onTrackPointAppended = null;
-export function setOnTrackPointAppended(fn) { onTrackPointAppended = fn; }
-
-// 記録点を追加: 経路の線に頂点を足し、最初の点なら開始点マーカーを置く。
-// timeMs は記録時刻(測位時刻。fixTimeOf)。
-function appendTrackPoint(track, latlng, timeMs) {
-  if (!track) return;
-  const wasEmpty = track.polyline.getLatLngs().length === 0;
-  track.polyline.addLatLng(latlng);
-  const lat = Array.isArray(latlng) ? latlng[0] : latlng.lat;
-  const lng = Array.isArray(latlng) ? latlng[1] : latlng.lng;
-
-  // 開始地点マーカー(この経路の最初の記録点のみ)
-  if (wasEmpty) {
-    track.startMarker = L.marker([lat, lng], {
-      icon: buildShapeIcon(trackStartStyle, 'square')
-    }).addTo(getMap());
-  }
-
-  // 終了点マーカー(三角)の位置・向きは呼び出し側(記録中はライブ現在地)で更新する。
-  lastTrackLatLng = [lat, lng];
-  lastTrackTimeMs = timeMs;
-  track.times.push(timeMs);
-  track.names.push(null);
-  onTrackPointAppended?.({ recorded: true });
-  saveTrackToStorage();
 }
 
 // ===== 写真の撮影地点 =====
@@ -490,48 +93,9 @@ export function capturePhotoPosition() {
         resolve([pos.coords.latitude, pos.coords.longitude]);
       },
       () => resolve(fallback()),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: PHOTO_POSITION_TIMEOUT_MS }
+      { ...FRESH_GEO_OPTIONS, timeout: PHOTO_POSITION_TIMEOUT_MS }
     );
   });
-}
-
-// ===== 画面スリープの防止(Screen Wake Lock API) =====
-// 移動記録中は画面を消灯させない。消灯するとブラウザがページの実行を止めてしまい、
-// 位置の監視(watchPosition)が動かず中間点が記録されないため。
-// 非対応の端末・ブラウザ(iOS 16.3 以前など)や、省電力モード等で取得できない場合は
-// 記録自体はそのまま続け、その旨を通知する(notifyTrack)。
-let wakeLockSentinel = null;
-// スリープ防止を取得できなかったことを一度だけ通知するためのフラグ(記録ごとにリセット)
-let wakeLockNotified = false;
-
-async function requestWakeLock() {
-  if (wakeLockSentinel) return;
-  if (!('wakeLock' in navigator)) {
-    notifyWakeLockUnavailable();
-    return;
-  }
-  try {
-    wakeLockSentinel = await navigator.wakeLock.request('screen');
-    // 非表示になる等で OS 側が解除したときは保持を破棄する
-    // (復帰時に visibilitychange で取り直す)
-    wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
-  } catch {
-    wakeLockSentinel = null;
-    notifyWakeLockUnavailable();
-  }
-}
-
-function notifyWakeLockUnavailable() {
-  if (wakeLockNotified) return;
-  wakeLockNotified = true;
-  notifyTrack(t('track.wakeLockUnavailable'));
-}
-
-function releaseWakeLock() {
-  const sentinel = wakeLockSentinel;
-  wakeLockSentinel = null;
-  wakeLockNotified = false;
-  if (sentinel) sentinel.release().catch(() => { /* 既に解除済み */ });
 }
 
 // ===== 画面の向き・表示領域が変わったときの処理 =====
@@ -564,11 +128,11 @@ window.visualViewport?.addEventListener('resize', handleViewportChange);
 // ===== バックグラウンド復帰時の処理 =====
 // 他アプリへの切替や画面消灯でページが非表示になると、ブラウザは位置の監視を
 // 停止・間引きする(Web の仕様上、完全なバックグラウンド測位はできない)。
-// 復帰したら「スリープ防止の取り直し」「監視の張り直し」「現在地の即時取得」を行い、
+// 記録中に復帰したら「スリープ防止の取り直し」「監視の張り直し」「現在地の即時取得」を行い、
 // 非表示だった区間の記録の途切れをできるだけ短くする。
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
-  if (!isRecordingTrack) return;
+  if (!isTrackRecording()) return;
   requestWakeLock();
   restartGeoWatch();
   captureCurrentPositionForTrack();
@@ -591,14 +155,9 @@ function captureCurrentPositionForTrack() {
   navigator.geolocation.getCurrentPosition(
     onGeoSuccess,
     () => { /* 失敗しても watchPosition 側で通知されるためここでは何もしない */ },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+    FRESH_GEO_OPTIONS
   );
 }
-
-// 移動記録に関する通知先(app.js が履歴・トーストへの出力に使用)
-let onTrackNotice = null;
-export function setOnTrackNotice(fn) { onTrackNotice = fn; }
-function notifyTrack(msg) { onTrackNotice && onTrackNotice(msg); }
 
 // ===== 現在地監視の制御 =====
 // 監視(watchPosition)が必要か:
@@ -613,7 +172,7 @@ function notifyTrack(msg) { onTrackNotice && onTrackNotice(msg); }
 // 「何も表示していないのに測位している」のは不具合ではないので、電池優先に振るとき以外は
 // この条件を狭めないこと。
 function needLocationWatch() {
-  if (isRecordingTrack) return true;
+  if (isTrackRecording()) return true;
   return onMapView && (showCurrentMarker || followCurrentLocation);
 }
 
@@ -633,7 +192,7 @@ function startGeoWatch() {
   geoWatchId = navigator.geolocation.watchPosition(
     onGeoSuccess,
     (err) => reportLocationError(t('geo.fetchFailed', { message: err.message })),
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    GEO_OPTIONS
   );
 }
 
@@ -690,12 +249,7 @@ function onGeoSuccess(pos) {
   }
 
   // 記録中: 条件を満たせば記録点を追加し、三角をライブ現在地へ追従(進行方向つき)
-  if (isRecordingTrack && recordingTrack) {
-    if (shouldRecordTrackPoint(latlng, fixTimeMs, pos.coords.accuracy)) {
-      appendTrackPoint(recordingTrack, latlng, fixTimeMs);
-    }
-    updateRecordingLive(latlng);
-  }
+  recordFix(latlng, fixTimeMs, pos.coords.accuracy);
 
   // 地図を操作している間と、操作を終えてから FOLLOW_RESUME_IDLE_SEC 秒は寄せない(→ scheduleFollowResume)
   if (shouldFollowMap() && isMapIdleForFollow()) moveMapToCurrentLocation(latlng);
@@ -710,7 +264,7 @@ function shouldFollowMap() {
   return followCurrentLocation && showCurrentMarker && onMapView;
 }
 
-// 追従中の1本指ズームは、触れた地点ではなく現在地のある画面中央を中心にする(map.js 参照)
+// 追従中の1本指ズームは、触れた地点ではなく現在地のある画面中央を中心にする(one-finger-zoom.js 参照)
 setOneFingerZoomAroundCenter(shouldFollowMap);
 
 // ===== 地図を操作した後の追従の再開 =====
@@ -764,7 +318,8 @@ function moveMapToCurrentLocation(latlng) {
   recenterWithoutAnimation = false;
 }
 
-// 現在地マーカー(青丸)の見た目。色・形状・大きさはマーカー設定の「現在地点」に従う
+// ===== 現在地マーカー(青丸) =====
+// 見た目(色・形状・大きさ)はマーカー設定の「現在地点」に従う
 // (setCurrentLocationStyle。既定値は config.js の MARKER_TYPES)。
 let currentLocationStyle = null;
 // 他のマーカー(緊急ポイント・移動記録現在地点の三角など)より下に描くための zIndexOffset。
@@ -863,7 +418,7 @@ export function showCurrentLocationSpot({ onEnd } = {}) {
       reportLocationError(t('geo.fetchFailed', { message: err.message }));
       endCurrentLocationSpot();
     },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    GEO_OPTIONS
   );
 }
 
@@ -928,6 +483,7 @@ function clearCurrentLocationSpot() {
   }
 }
 
+// ===== マップ画面・メニューのトグルとの連携 =====
 // マップビューの出入りで現在地監視を制御する。
 // active=true でマップ表示中とみなして必要なら監視開始、false で監視停止・マーカー除去。
 // onError は位置情報取得失敗時の通知に使う(指定時に記憶し、以降の監視でも使用)。

@@ -13,9 +13,10 @@
 // 文言は i18n の翻訳キー(guide.<キー>Title / guide.<キー>Body)から取る。ページを増やすときは
 // GUIDE_STEPS に足し、i18n.js に同じキーの ja/en を追加する。
 
-import { GUIDE_SEEN_KEY, MARKER_SETTINGS_REV_KEY, MARKER_TYPES } from './config.js';
-import { t } from './i18n.js';
-import { shapeToSVG } from './map.js';
+import { GUIDE_SEEN_KEY, MARKER_SETTINGS_REV_KEY, MARKER_TYPES } from '../common/config.js';
+import { t } from '../common/i18n.js';
+import { shapeToSVG } from '../map/marker-icons.js';
+import { readLocal, writeLocal } from '../common/storage.js';
 
 // 明るく残す場所の外側に取る余白(px)
 const GUIDE_PAD = 8;
@@ -128,17 +129,12 @@ let restore = null; // 開く前の画面・表示設定パネルの状態(閉�
 // ===== 表示した記録(初回起動時だけ自動で開くために使う) =====
 // localStorage が使えない環境では「開いた」扱いにして、起動のたびに自動表示されないようにする
 function readGuideSeen() {
-  try {
-    return localStorage.getItem(GUIDE_SEEN_KEY) === '1';
-  } catch {
-    return true;
-  }
+  return readLocal(GUIDE_SEEN_KEY, '1') === '1';
 }
 
+// 保存できなくてもガイド自体は動く
 function writeGuideSeen() {
-  try {
-    localStorage.setItem(GUIDE_SEEN_KEY, '1');
-  } catch { /* 保存できなくてもガイド自体は動く */ }
+  writeLocal(GUIDE_SEEN_KEY, '1');
 }
 
 // 以前からアプリを使っている端末かどうか(本アプリの保存データが既にあるか)。

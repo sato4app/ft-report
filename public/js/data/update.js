@@ -6,9 +6,10 @@
 import {
   APP_UPDATED_FLAG_KEY,
   APP_UPDATE_DOWNLOAD_TIMEOUT_MS, APP_UPDATE_WORKER_WAIT_MS
-} from './config.js';
-import { t } from './i18n.js';
-import { logHistory, showToast } from './messages.js';
+} from '../common/config.js';
+import { t } from '../common/i18n.js';
+import { notify } from '../common/messages.js';
+import { takeSession, writeSession } from '../common/storage.js';
 
 // ===== 開いている間に、ブラウザが新しい版へ入れ替えたときの検知 =====
 // ブラウザはアプリを開くたびに service-worker.js の更新を自分で確かめ、新しい版があれば
@@ -46,8 +47,7 @@ export function watchAppShellReplacement() {
     }
     if (updatingNow || pageOutdated) return;
     pageOutdated = true;
-    logHistory(t('update.appReplaced'), '');
-    showToast(t('update.appReplaced'));
+    notify(t('update.appReplaced'));
   });
 }
 
@@ -95,16 +95,6 @@ export async function checkAppShellUpdate() {
   }
 }
 
-// updateAppToLatest() が再読み込みの前に記録した更新先の版を取り出す(1回限り)
-function takeUpdatedVersion() {
-  try {
-    const version = sessionStorage.getItem(APP_UPDATED_FLAG_KEY);
-    sessionStorage.removeItem(APP_UPDATED_FLAG_KEY);
-    return version;
-  } catch {
-    return null;
-  }
-}
 
 // アプリ更新の confirm を表示し、OK なら最新へ更新(再読み込み)する。
 async function promptAppShellUpdate() {
@@ -125,7 +115,8 @@ async function promptAppShellUpdate() {
   if (!cached || !latest) return;
   // アプリ更新による再読み込みの直後は、更新した版を尋ね直さない。updateAppToLatest() は
   // SW の切替完了を待たずに再読み込みするため、切替が間に合わないと版が不一致に見える。
-  const updatedTo = takeUpdatedVersion();
+  // updateAppToLatest() が再読み込みの前に記録した更新先の版(1回限り)
+  const updatedTo = takeSession(APP_UPDATED_FLAG_KEY);
   if (cached === latest || latest === declinedVersion || latest === updatedTo) return;
   if (confirm(t('update.appConfirm', { cached, latest }))) await updateAppToLatest(latest);
   else declinedVersion = latest;
@@ -231,6 +222,6 @@ async function updateAppToLatest(latest) {
     console.warn('アプリ更新失敗:', err);
   }
   // 再読み込み後の最初の更新確認で、同じ版の確認を再表示しないよう更新先の版を控える。
-  try { sessionStorage.setItem(APP_UPDATED_FLAG_KEY, latest); } catch { /* noop */ }
+  writeSession(APP_UPDATED_FLAG_KEY, latest);
   reloadApp();
 }

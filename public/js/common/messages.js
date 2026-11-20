@@ -3,9 +3,12 @@
 //   移動記録の開始・終了など)を localStorage に蓄積し、
 //   「情報・言語/Info & Language」モーダルの「メッセージ履歴の表示」で一覧表示する。
 // - トースト: 画面中央下の一時メッセージ(自動で閉じる)。
+// - notify / notifyError: 履歴とトーストの両方に同じ文言を出す(操作の結果・失敗の知らせ)。
 
 import { MESSAGE_LOG_KEY, MESSAGE_LOG_MAX, TOAST_DURATION_SEC } from './config.js';
 import { t } from './i18n.js';
+import { readLocalJSON, writeLocalJSON, writeLocal } from './storage.js';
+import { pad2, formatLocalTime, errorText } from './utils.js';
 
 const el = {
   messageList: document.getElementById('messageList'),
@@ -20,19 +23,13 @@ export function logHistory(text, level) {
   const log = readMessageLog();
   log.push({ t: Date.now(), text, level: level || '' });
   while (log.length > MESSAGE_LOG_MAX) log.shift();
-  try { localStorage.setItem(MESSAGE_LOG_KEY, JSON.stringify(log)); } catch { /* noop */ }
+  writeLocalJSON(MESSAGE_LOG_KEY, log);
   if (el.infoMessagesBody && !el.infoMessagesBody.hidden) renderMessageList();
 }
 
 function readMessageLog() {
-  try {
-    const raw = localStorage.getItem(MESSAGE_LOG_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
+  const arr = readLocalJSON(MESSAGE_LOG_KEY);
+  return Array.isArray(arr) ? arr : [];
 }
 
 // 履歴を新しい順に描画する。空なら「履歴はありません」を表示。
@@ -62,17 +59,14 @@ export function renderMessageList() {
 
 export function clearMessageLog() {
   if (!confirm(t('messages.clearConfirm'))) return;
-  try { localStorage.removeItem(MESSAGE_LOG_KEY); } catch { /* noop */ }
+  writeLocal(MESSAGE_LOG_KEY, null);
   renderMessageList();
 }
 
+// 履歴の時刻(MM/DD HH:MM)
 function formatLogTime(ts) {
   const d = new Date(ts);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${mm}/${dd} ${hh}:${mi}`;
+  return `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())} ${formatLocalTime(ts)}`;
 }
 
 // ===== 一時メッセージ(トースト) =====
@@ -97,4 +91,21 @@ export function showToast(text, { durationSec = TOAST_DURATION_SEC } = {}) {
       toastTimerId = null;
     }, 250);
   }, ms);
+}
+
+// いま出ているトーストを読み終えるころに出す。直前の操作のトースト(「移動記録を開始しました」・
+// 読み込みの結果など)と同時に届く知らせで、先のトーストを上書きしないようにする
+export function showToastAfterCurrent(text) {
+  setTimeout(() => showToast(text), (TOAST_DURATION_SEC + 0.5) * 1000);
+}
+
+// 履歴に残し、トーストでも知らせる(同じ文言を両方に出すとき)
+export function notify(text, level = '') {
+  logHistory(text, level);
+  showToast(text);
+}
+
+// 失敗を履歴とトーストで知らせる。key は {message} を含む翻訳キーで、例外の内容をそこへ入れる
+export function notifyError(key, err) {
+  notify(t(key, { message: errorText(err) }), 'error');
 }

@@ -1,12 +1,13 @@
 // 写真の出力・読み込み(KMZ)モジュール
 // KMZ は KML(地点の一覧)と画像を ZIP にまとめたもの。本アプリは写真だけを KMZ に入れ、
-// 経路は GPX で別に出力する(app.js)。構成は次のとおり:
+// 経路は GPX で別に出力する(gpx.js)。構成は次のとおり:
 //   doc.kml               … 写真1枚につき Placemark 1つ(名前・撮影日時・位置・画像への参照)
 //   files/photo-001.jpg … 写真本体(doc.kml の description から <img src> で参照する)
 // ZIP は外部ライブラリを使わずに組み立てる。写真(JPEG)はもともと圧縮されているため、
 // 出力は無圧縮(stored)で足りる。読み込みは他のアプリの KMZ にも備え、無圧縮と
 // Deflate(DecompressionStream)の両方を読む。
-import { t } from './i18n.js';
+import { t } from '../common/i18n.js';
+import { escapeXml } from '../common/utils.js';
 
 // ===== ZIP の組み立て(無圧縮) =====
 const CRC_TABLE = (() => {
@@ -138,11 +139,6 @@ export async function isZipFile(file) {
 
 // ===== 写真の KMZ =====
 const IMAGE_TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
-
-function escapeXml(s) {
-  return String(s)
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-}
 
 // 出力する写真の画像を読み出す(Blob → Uint8Array)。読み出しは非同期のため、
 // 出力ボタンを押す前に済ませておき、押したときは同期的にダウンロードを始める
