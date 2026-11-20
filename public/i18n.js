@@ -268,8 +268,8 @@ const DICT = {
   'photo.exportTitle': { ja: '写真の出力(KMZ)', en: 'Export Photos (KMZ)' },
   'photo.nothingToExport': { ja: '出力する写真がありません', en: 'No photos to export' },
   'photo.exportNote': {
-    ja: '写真はこのアプリの中にだけ保存されています。「写真を撮影」の「クリア」で消えます。',
-    en: 'Photos are kept only inside this app. "Clear" under "Take Photos" deletes them.'
+    ja: '写真はこのアプリの中にだけ保存されています。「写真を撮影」の「クリア」で消えます。希少な動植物や自宅付近の位置情報が含まれる場合は、SNS などへの公開にご注意ください。',
+    en: 'Photos are kept only inside this app. "Clear" under "Take Photos" deletes them. If the photos include locations of rare plants or animals, or near your home, take care before sharing them on social media and elsewhere.'
   },
   'photo.exportPreparing': {
     ja: '写真を準備しています。少し待ってから、もう一度押してください',

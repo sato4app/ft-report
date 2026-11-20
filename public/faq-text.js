@@ -4,7 +4,7 @@
 //
 // 構成:
 //   FAQ_NOTICES  … ご利用の注意(9項目)。1行の要約と、詳しい説明のある質問への参照
-//   FAQ_SECTIONS … よくある質問(7分類・30問)。説明の本体はこちらにだけ置く
+//   FAQ_SECTIONS … よくある質問(7分類・31問)。説明の本体はこちらにだけ置く
 //
 // ご利用の注意を増やすときは、対応する質問を FAQ_SECTIONS に用意し、ref で指すこと
 // (注意側に本文を書くと、また二重管理になる)。
@@ -62,13 +62,6 @@ export const FAQ_NOTICES = [
   },
   {
     text: {
-      ja: '表示される情報は、電波のある場所で開いたときに受け取った内容です。入山前に一度開き直してください。',
-      en: 'What you see is what the app received the last time you opened it with a signal. Reopen it before you set off.'
-    },
-    refs: ['Q16']
-  },
-  {
-    text: {
       ja: '地図のダウンロード対象は、緊急ポイントやハイキングルートの周辺のみです。',
       en: 'Only the area around the emergency points and hiking routes is available for download.'
     },
@@ -82,6 +75,13 @@ export const FAQ_NOTICES = [
       en: 'While recording a track the device is kept from sleeping, so the battery drains faster. Make sure your battery has enough charge.'
     },
     refs: ['Q20']
+  },
+  {
+    text: {
+      ja: '出力した経路や写真の管理・公開は、利用者の責任で行ってください。希少な動植物の保護や、私有地・立入禁止区域に配慮してください。',
+      en: 'You are responsible for managing and sharing the tracks and photos you export. Take care to protect rare plants and animals, and to respect private land and no-entry areas.'
+    },
+    refs: ['Q26']
   }
 ];
 
@@ -560,6 +560,27 @@ export const FAQ_SECTIONS = [
             en: 'The tracks are kept separately as "Route 1" and "Route 2", each with its own number of points and distance.'
           }
         ]
+      },
+      {
+        id: 'Q26',
+        q: {
+          ja: '記録した経路や撮った写真を、SNS などで公開してもよいですか。',
+          en: 'Can I share my recorded tracks and photos, for example on social media?'
+        },
+        a: [
+          {
+            ja: '「出力」で保存した GPX ファイル(経路)と KMZ ファイル(写真と撮影地点)は、利用者の端末に保存されます。本アプリが外部へ送信することはありません。その管理や公開は、利用者の責任で行ってください。',
+            en: 'The GPX files (tracks) and KMZ files (photos with where they were taken) that you save with "Export" are stored on your device; the app never sends them anywhere. You are responsible for how you manage and share them.'
+          },
+          {
+            ja: '公開するときは、場所が分かることで起こりうる影響に配慮してください。希少な動植物の生育地・生息地が分かる写真や位置は、採取や踏み荒らしにつながるおそれがあります。私有地や立入禁止区域を通る経路は、ほかの人の立ち入りを招くおそれがあります。',
+            en: 'When you share, think about what revealing a location can lead to. Photos or positions that show where rare plants or animals live can lead to collecting or trampling. Tracks that pass through private land or no-entry areas can lead others to enter them.'
+          },
+          {
+            ja: '地図の画面を含めて公開するときは、Q28 もご覧ください。',
+            en: 'If what you share includes the map, see Q28 as well.'
+          }
+        ]
       }
     ]
   },
@@ -567,7 +588,7 @@ export const FAQ_SECTIONS = [
     title: { ja: 'その他', en: 'Other' },
     items: [
       {
-        id: 'Q26',
+        id: 'Q27',
         q: {
           ja: '地図やルートは、誰が作っているのですか。',
           en: 'Who makes the map and the routes?'
@@ -584,7 +605,7 @@ export const FAQ_SECTIONS = [
         ]
       },
       {
-        id: 'Q27',
+        id: 'Q28',
         q: {
           ja: '国土地理院の地図を使うことについて、国土地理院の許可は得ていますか。',
           en: 'Does this app have permission from GSI to use its map?'
@@ -605,7 +626,7 @@ export const FAQ_SECTIONS = [
         ]
       },
       {
-        id: 'Q28',
+        id: 'Q29',
         q: {
           ja: '地図やアプリのバージョンを確認したいです。',
           en: 'I want to check the map and app versions.'
@@ -618,7 +639,7 @@ export const FAQ_SECTIONS = [
         ]
       },
       {
-        id: 'Q29',
+        id: 'Q30',
         q: {
           ja: '端末の空き容量を増やしたいです。',
           en: 'I want to free up space on my device.'
@@ -631,7 +652,7 @@ export const FAQ_SECTIONS = [
         ]
       },
       {
-        id: 'Q30',
+        id: 'Q31',
         q: {
           ja: '英語表示にしたら、戻し方が分からなくなりました。',
           en: 'I switched to English and cannot find my way back.'

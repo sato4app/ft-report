@@ -12,7 +12,7 @@ import { getLang } from './i18n.js';
 
 export const VERSION_HISTORY = [
   {
-    date: '2026-11-18',
+    date: '2026-11-20',
     text: { ja: '機能追加: 写真を撮影', en: 'New feature: Take Photos' }
   },
   {
