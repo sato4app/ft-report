@@ -128,7 +128,6 @@ const DICT = {
     ja: 'ファイル名を入力してください',
     en: 'Enter the file name'
   },
-  'track.exported': { ja: '移動経路を {name} に出力しました', en: 'Track exported to {name}' },
   'track.ariaStats': { ja: '移動経路の統計', en: 'Track statistics' },
   'track.statPoints': { ja: '地点数', en: 'Points' },
   'track.statDistance': { ja: '移動距離', en: 'Distance' },
@@ -187,6 +186,12 @@ const DICT = {
   'track.unexportedWarning': {
     ja: '出力していない移動経路があります。残したい場合は、先に「出力」で GPX ファイルに出力してください。',
     en: 'Some tracks have not been exported. To keep them, first export them as a GPX file with "Export".'
+  },
+  // 出力済みのときのクリアの確認に添える注意。出力しても保存されたかどうかはアプリに分からない
+  // (保存の画面で取りやめても出力済みになる)ため、消す前に保存を確かめてもらう
+  'track.exportedCheckNote': {
+    ja: '出力した GPX ファイルが保存されていることを、ファイルアプリなどで確かめてからクリアしてください。',
+    en: 'Before clearing, check in a Files app or similar that the exported GPX file has been saved.'
   },
   // GPX の出力モーダルに出す、写真の出し忘れの案内(未出力の写真があるときだけ)
   'track.exportPhotoNote': {
@@ -275,11 +280,15 @@ const DICT = {
     ja: '写真を準備しています。少し待ってから、もう一度押してください',
     en: 'Preparing the photos. Wait a moment and press again'
   },
-  'photo.exported': { ja: '写真を {name} に出力しました', en: 'Photos exported to {name}' },
   'photo.exportFailed': { ja: '写真の出力に失敗しました: {message}', en: 'Photo export failed: {message}' },
   'photo.unexportedWarning': {
     ja: '出力していない写真があります。残したい場合は、先に「出力」で KMZ ファイルに出力してください。',
     en: 'Some photos have not been exported. To keep them, first export them as a KMZ file with "Export".'
+  },
+  // 出力済みのときのクリアの確認に添える注意(→ track.exportedCheckNote)
+  'photo.exportedCheckNote': {
+    ja: '出力した KMZ ファイルが保存されていることを、ファイルアプリなどで確かめてからクリアしてください。',
+    en: 'Before clearing, check in a Files app or similar that the exported KMZ file has been saved.'
   },
   // 読み込み(写真の「KMZ読み込み」から。KMZ だけを読み込む)
   'photo.importNotKmz': { ja: 'KMZファイルではありません', en: 'The file is not a KMZ file' },

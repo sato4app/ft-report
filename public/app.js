@@ -634,14 +634,15 @@ function bindEvents() {
   });
 
   // クリア: 記録した移動経路(線・開始点・現在地点)を消去する(写真は消さない)。
-  // 出力していない経路があれば、先に出力するよう添える
+  // 出力していない経路があれば、先に出力するよう添える。出力済みのときは、保存されたかどうかが
+  // アプリに分からない(保存の画面で取りやめても出力済みになる)ため、保存を確かめてから消すよう添える
   on(el.btnTrackClear, 'click', () => {
     if (!hasTrack()) {
       showToast(t('track.nothingToClear'));
       return;
     }
-    let message = t('track.clearConfirm');
-    if (hasUnexportedTrack()) message += `\n\n${t('track.unexportedWarning')}`;
+    const note = hasUnexportedTrack() ? 'track.unexportedWarning' : 'track.exportedCheckNote';
+    const message = `${t('track.clearConfirm')}\n\n${t(note)}`;
     if (!confirm(message)) return;
     clearTrack();
     setTrackUnexported(false);
@@ -654,15 +655,16 @@ function bindEvents() {
   });
 
   // 写真のクリア: 全部の写真を消去する(経路は消さない)。
-  // 写真はアプリの中にしか無いため、出力していない写真があれば先に出力するよう添える
+  // 写真はアプリの中にしか無いため、出力していない写真があれば先に出力するよう添える。
+  // 出力済みのときは、経路と同じく保存を確かめてから消すよう添える
   on(el.btnPhotoClear, 'click', () => {
     const n = getPhotoCount();
     if (n === 0) {
       showToast(t('photo.nothingToClear'));
       return;
     }
-    let message = t('photo.clearConfirm', { n });
-    if (hasUnexportedPhotos()) message += `\n\n${t('photo.unexportedWarning')}`;
+    const note = hasUnexportedPhotos() ? 'photo.unexportedWarning' : 'photo.exportedCheckNote';
+    const message = `${t('photo.clearConfirm', { n })}\n\n${t(note)}`;
     if (!confirm(message)) return;
     clearPhotos();
     logHistory(t('photo.cleared'), '');
@@ -1581,7 +1583,9 @@ function buildTrackGpx(segments, name) {
     '</gpx>\n';
 }
 
-// 出力ボタン: GPX を生成してダウンロードし、連番を保存して出力済みにし、モーダルを閉じる
+// 出力ボタン: GPX を生成してダウンロードし、連番を保存して出力済みにし、モーダルを閉じる。
+// 「出力しました」の完了メッセージは出さない。a[download] では保存されたかどうかがアプリに分からず、
+// スマホでは保存の画面を閉じて(取りやめて)戻っても同じ流れになるため、出すと実際と食い違うことがある。
 function handleTrackExportSave() {
   const name = readExportName(el.trackExportName);
   if (!name) {
@@ -1599,8 +1603,6 @@ function handleTrackExportSave() {
   writeExportSeq(TRACK_EXPORT_SEQ_KEY, name);
   setTrackUnexported(false);
   updateTrackPanel();
-  logHistory(t('track.exported', { name: fileName }), 'success');
-  showToast(t('track.exported', { name: fileName }));
   closeModal(el.trackExportModal);
 }
 
@@ -1669,7 +1671,8 @@ function handlePhotoExportSave() {
 }
 
 // 写真の KMZ を組み立ててダウンロードし、出力済みにする(読み出し済みの画像を使い、同期的に行う)。
-// 出力できたら true を返す
+// ダウンロードを始められたら true を返す。GPX と同じ理由で「出力しました」の完了メッセージは出さない
+// (→ handleTrackExportSave)
 function exportPhotosKmz(name) {
   if (!photoBytes || !photoBytesFor) {
     showToast(t('photo.exportPreparing'));
@@ -1687,8 +1690,6 @@ function exportPhotosKmz(name) {
     releasePhotoBytes();
   }
   markPhotosExported();
-  logHistory(t('photo.exported', { name: fileName }), 'success');
-  showToast(t('photo.exported', { name: fileName }));
   return true;
 }
 
