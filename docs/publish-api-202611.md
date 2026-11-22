@@ -1,7 +1,7 @@
-# 箕面ハイキングマップ 公開API 仕様書（契約バージョン 3.1）
+# 箕面ハイキングマップ 公開API 仕様書（契約バージョン 3.2）
 
-**バージョン:** 2.1
-**最終更新日:** 2026年9月24日
+**バージョン:** 2.3
+**最終更新日:** 2026年11月22日
 **対象:** minoh-hiking `api/` — 実装側 / MapPublisher — 呼び出し側
 **関連:**
 [機能仕様 `funcspec-202611.md`](funcspec-202611.md) §10（契約 1.0 の §10.2 は**本書で置き換えた**） /
@@ -26,7 +26,19 @@ MapPublisher `docs/migration-plan-202608.md`（移行の実装計画）
 
 破壊的変更のときだけ契約バージョンを上げ、呼び出し側にも反映する。
 
-### 1.3 契約 3.0 からの変更点（3.1）
+### 1.3 契約 3.1 からの変更点（3.2）
+
+**追加のみで、既存の呼び出しは変わらない。** 追加した項目を送らない公開は 3.1 と同じく受理される。
+
+| 項目 | 内容 |
+|---|---|
+| 公開スキーマ | 緊急ポイント・スポット・ルートに **`englishName`（英語名・任意）**、ルートに **`name`（ルート名・任意）** を追加（§3.2） |
+| 検証 | 追加なし。名称の内容は検査せず、そのまま保存・配信する（§6.2） |
+
+利用者アプリは、English 表示では `englishName` を使い、無ければ `name` を表示する。
+3.2 に対応していない版のアプリは追加項目を無視するだけなので、データを先に公開しても表示は崩れない。
+
+### 1.4 契約 3.0 からの変更点（3.1）
 
 **追加のみで、既存の呼び出しは変わらない。** `reopenDate` を送らない公開は 3.0 と同じく受理される。
 
@@ -38,7 +50,7 @@ MapPublisher `docs/migration-plan-202608.md`（移行の実装計画）
 利用者アプリは、値があるときだけポップアップに「解除予定」を表示する。
 3.1 に対応していない版のアプリは `reopenDate` を無視するだけなので、データを先に公開しても表示は崩れない。
 
-### 1.4 契約 2.1 からの変更点（3.0）
+### 1.5 契約 2.1 からの変更点（3.0）
 
 **破壊的変更。** `version` の設定者がサーバーから送信側へ移る。
 
@@ -55,7 +67,7 @@ MapPublisher `docs/migration-plan-202608.md`（移行の実装計画）
 > 同じ version のまま内容だけ変えて公開すると、公開は成功したように見えるのに、
 > 利用者の端末は更新に気づかない。採番をやめる以上、この事故はサーバーで止めるほかない。
 
-### 1.5 契約 2.0 からの変更点（2.1）
+### 1.6 契約 2.0 からの変更点（2.1）
 
 **追加のみで、既存の呼び出しは変わらない。** mapdata / closures の送信・応答・検証は 2.0 のまま。
 
@@ -69,7 +81,7 @@ MapPublisher `docs/migration-plan-202608.md`（移行の実装計画）
 タイル一覧はこれまでアプリに同梱していた（`public/data/tile_manifest.json`）。
 範囲を変えるたびにアプリのデプロイが必要だったため、他の2つと同じ配信に揃える。
 
-### 1.6 契約 1.0 からの変更点
+### 1.7 契約 1.0 からの変更点
 
 | 項目 | 契約 1.0 | **契約 2.0** | 理由 |
 |------|---------|-------------|------|
@@ -103,7 +115,7 @@ MapPublisher `docs/migration-plan-202608.md`（移行の実装計画）
 | MapEditor | 地点・ルート・スポットの編集、通行止め地点の登録。作業用 GeoJSON を出力する |
 | DownloadArea | オフライン地図の対象範囲を指定し、`tile_manifest.json` を出力する。**公開はしない** |
 | MapPublisher | 作業用 GeoJSON を**公開スキーマへ整形**し、公開API へ送信する |
-| 公開API（本書） | 検証・version 採番・保存・配信 |
+| 公開API（本書） | 検証（version の形式・重複を含む）・保存・配信 |
 | minoh-hiking アプリ | 配信データの表示。**GET のみ**利用する |
 
 編集用の識別子（`spot` の `id` など）は MapEditor の作業ファイルには残し、
@@ -148,6 +160,7 @@ MapPublisher `docs/migration-plan-202608.md`（移行の実装計画）
 | `type` | `"ポイントGPS"` | ○ | 固定値 |
 | `id` | string | ○ | 例 `"B-01"`。**現地の標識と対応する利用者向けの識別子**のため保持する |
 | `name` | string | ○ | 例 `"聖天展望台"` |
+| `englishName` | string | — | 英語名。例 `"Shoten Viewpoint"`。**値があるときのみ出力する**（契約 3.2〜） |
 | `description` | string | — | **値があるときのみ出力する**（null は出力しない） |
 
 geometry: `Point`
@@ -160,6 +173,7 @@ geometry: `Point`
 |---|---|---|---|
 | `type` | `"spot"` | ○ | 固定値 |
 | `name` | string | ○ | 例 `"滝道32鉄橋"` |
+| `englishName` | string | — | 英語名。**値があるときのみ出力する**（契約 3.2〜） |
 
 geometry: `Point`
 
@@ -175,6 +189,8 @@ geometry: `Point`
 |---|---|---|---|
 | `type` | `"route"` | ○ | 固定値 |
 | `id` | string | ○ | 例 `"route_H-04_to_H-11"`。区間の識別に使う |
+| `name` | string | — | ルート名。例 `"東海自然歩道"`。複数の区間で同じ名称になりうる。**値があるときのみ出力する**（契約 3.2〜） |
+| `englishName` | string | — | 英語名。**値があるときのみ出力する**（契約 3.2〜） |
 | `startPointGPS` | `[経度, 緯度, 標高?]` \| null | ○ | 開始点の座標 |
 | `endPointGPS` | `[経度, 緯度, 標高?]` \| null | ○ | 終了点の座標 |
 
@@ -219,12 +235,12 @@ geometry: `Point`
   "features": [
     {
       "type": "Feature",
-      "properties": { "type": "ポイントGPS", "id": "B-01", "name": "聖天展望台" },
+      "properties": { "type": "ポイントGPS", "id": "B-01", "name": "聖天展望台", "englishName": "Shoten Viewpoint" },
       "geometry": { "type": "Point", "coordinates": [135.47258, 34.839, 184.6] }
     },
     {
       "type": "Feature",
-      "properties": { "type": "spot", "name": "滝道32鉄橋" },
+      "properties": { "type": "spot", "name": "滝道32鉄橋", "englishName": "Takimichi Bridge 32" },
       "geometry": { "type": "Point", "coordinates": [135.47102, 34.84955, 162.3] }
     },
     {
@@ -232,6 +248,8 @@ geometry: `Point`
       "properties": {
         "type": "route",
         "id": "route_H-04_to_H-11",
+        "name": "ルート名の例",
+        "englishName": "Example Route",
         "startPointGPS": [135.4713, 34.87451, 534],
         "endPointGPS": [135.47341, 34.86829, 552.9]
       },
@@ -246,7 +264,7 @@ geometry: `Point`
 
 ### 3.6 tiles の構造（GeoJSON ではない）
 
-DownloadArea が出力した `tile_manifest.json` をそのまま送る。整形は不要。
+DownloadArea が出力した `tile_manifest.json` に `version` を入れて送る（§4.2）。それ以外の整形は不要。
 
 ```json
 {
@@ -262,13 +280,14 @@ DownloadArea が出力した `tile_manifest.json` をそのまま送る。整形
 
 | プロパティ | 型 | 必須 | 説明 |
 |---|---|---|---|
+| `version` | string（`yyyy.nn`） | ○ | **送信側**が入れる（§4） |
 | `layers` | object | ○ | レイヤーキー → レイヤー定義。1つ以上 |
 | `layers.<key>.z` | number | ○ | ズームレベル（10〜18） |
 | `layers.<key>.tiles` | array | ○ | `[x, y]` の配列 |
 | `layers.<key>.tile_count` | number | — | あれば `tiles` の要素数と一致すること |
 | `source` | string | — | 出力元の記録。無ければ空文字で保存する |
 
-- `version` / `updatedAt` は**送られても無視し、サーバーの値を採用する**（他のデータセットと同じ）
+- `version` は**送信側の値を採用**し、`updatedAt` は**送られても無視してサーバーの値を採用する**（他のデータセットと同じ）
 - レイヤーキー（`z14_default` 等）は利用側アプリが「基本／詳細」の区分に使う。
   **サーバーはキーの命名を検証しない**
 
@@ -416,6 +435,7 @@ DownloadArea が出力した `tile_manifest.json` をそのまま送る。整形
 - geometry は `Point` または `LineString` であること
   - `ポイントGPS` / `spot` は `Point`
   - `route` は `LineString`
+- `name` / `englishName` の有無・内容は検査しない（表示側で HTML エスケープする）
 
 ### 6.3 closures 固有
 
@@ -445,7 +465,7 @@ GeoJSON ではないため §6.1 は適用しない。
 ### 7.1 Blob 構成
 
 ```
-manifest.json                          ← 採番の基準・GET /api/manifest の実体
+manifest.json                          ← 重複判定の基準・GET /api/manifest の実体
 mapdata/minoh-hiking-mapdata.geojson   ← 現行
 mapdata/previous.geojson               ← 前回分（1世代のみ・毎回上書き）
 closures/minoh-hiking-closure.geojson  ← 現行
@@ -492,7 +512,7 @@ await copy(BLOB_PATH, PREVIOUS_PATH, {
 - ヘッダ **`x-publish-token`**
 - 比較は**固定長ハッシュ同士**で行う（SHA-256 → `timingSafeEqual`）。タイミング攻撃対策
 - 環境変数が未設定のときは 503 を返す
-- 2つのデータセットで**同一のトークン**を使う
+- 3つのデータセットで**同一のトークン**を使う
 
 ---
 
@@ -514,11 +534,11 @@ GitHub Pages 版アプリ・MapPublisher からもクロスオリジンで参照
 
 ```
 1. localStorage から保存済み version を読む
-2. Cache API から GeoJSON を読んで即描画        ← オフラインでもここまでで表示される
-3. GET /api/manifest（cache: 'no-store'）
+2. Cache API から保存済みの本体を読んで即反映   ← オフラインでもここまでで表示される
+3. GET /api/manifest（cache: 'no-store'）       ← 起動時と、起動時画面のボタンのタップ時
      ├─ 失敗（オフライン等）      → 終了
      ├─ version が一致            → 終了（本体を取りに行かない）
-     └─ version が相違
+     └─ version が相違、または手順2で読めなかった
           4. GET 本体
           5. Cache API に保存
           6. 再描画
@@ -552,6 +572,8 @@ GitHub Pages 版アプリ・MapPublisher からもクロスオリジンで参照
 | 版 | 日付 | 内容 |
 |---|---|---|
 | 1.0 | 2026-08-18 | 初版。契約バージョン 2.0 を定義し、機能仕様書 §10.2（契約 1.0）を置き換える |
-| 2.1 | 2026-09-24 | **契約バージョン 3.1**。closures の Feature に `reopenDate`（解除予定日・`YYYY-MM-DD`・任意）を追加し（§3.3）、形式の検証を追加（§6.3）。追加のみで既存の呼び出しに影響なし（§1.3） |
+| 2.3 | 2026-11-22 | **文書の修正のみ（契約は 3.2 のまま）**。契約 3.0 への追随漏れを実装に合わせた（§2.2 の責務、§3.6 の tiles の `version`、§7.1 の manifest の役割）。§8 のトークンの対象を3データセットに、§10 を更新版の確認のきっかけと本体を取り直す条件に合わせて修正 |
+| 2.2 | 2026-11-22 | **契約バージョン 3.2**。緊急ポイント・スポット・ルートに `englishName`（英語名・任意）、ルートに `name`（ルート名・任意）を追加（§3.2・§3.5）。検証の追加なし。追加のみで既存の呼び出しに影響なし（§1.3。以降の節を1つずつ繰り下げた） |
+| 2.1 | 2026-09-24 | **契約バージョン 3.1**。closures の Feature に `reopenDate`（解除予定日・`YYYY-MM-DD`・任意）を追加し（§3.3）、形式の検証を追加（§6.3）。追加のみで既存の呼び出しに影響なし（§1.4） |
 | 2.0 | 2026-08-23 | **契約バージョン 3.0（破壊的変更）**。`version` の設定者をサーバーから**送信側**へ移し、形式を全データセットで **`yyyy.nn`**（2桁ゼロ埋め）に統一。`closures` の月区切り（`yyyy-mm.n`）を廃止。現在公開中と同一の `version` を **400 で拒否**する規則を追加（§4.3）。§4 を「採番」から「version」へ全面改訂し、§3.1・§5.4・§6・§7.2 を追随させた |
 | 1.1 | 2026-08-21 | **契約バージョン 2.1**。データセット `tiles`（オフライン地図のタイル一覧）を追加（追加のみ・既存の呼び出しに影響なし）。GeoJSON 以外を扱うため §3.6 に構造、§6.4 に検証ルールを追加し、§6.1 を「GeoJSON データセット共通」に改めた。責務分担に DownloadArea を追加（出力のみ・公開は MapPublisher） |

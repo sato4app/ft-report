@@ -6,7 +6,7 @@
 import * as L from 'leaflet';
 import { getMap, TAP_TOLERANCE } from './map.js';
 import { buildMarkerIcon } from './marker-icons.js';
-import { t } from '../common/i18n.js';
+import { t, pickLang } from '../common/i18n.js';
 import { escapeHtml, formatLocalDate } from '../common/utils.js';
 
 // 地図データ(mapdata): 緊急ポイント・ルート・スポットを1本の FeatureCollection で受け取り、
@@ -107,6 +107,12 @@ export function getFeatureCounts() {
   };
 }
 
+// 地図データの名称を表示言語で返す。英語表示では英語名(englishName)、無ければ日本語の名称(name)。
+// どちらも無ければ空文字(ルートは呼び出し側で区間表記にする)
+function featureName(p) {
+  return pickLang({ ja: p.name, en: p.englishName || null }) || '';
+}
+
 function createPointMarker(latlng, style, className = 'custom-marker') {
   return L.marker(latlng, { icon: buildMarkerIcon(style, { className }) });
 }
@@ -120,7 +126,7 @@ function buildEmergencyLayer() {
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
       const id = p.id ?? '';
-      const name = p.name ?? '';
+      const name = featureName(p);
       layer.bindPopup(`<strong>${escapeHtml(id)}</strong><br>${escapeHtml(name)}`);
     }
   });
@@ -213,18 +219,18 @@ function buildHikingLayer() {
     }),
     pointToLayer: (feature, latlng) => createPointMarker(latlng, styles.spot),
     // ポップアップは「スポット」と「ルート(端点まで伸ばした線全体)」に付ける。
-    // 配信データのスポットは名称と座標だけを持つ(id は編集用のため公開されない)。
-    // ルートは名称を持たないため、id から区間表記を組み立てて表示する。
+    // 配信データのスポットは名称(と英語名)・座標だけを持つ(id は編集用のため公開されない)。
+    // ルートの名称は任意のため、表示できる名称が無ければ id から区間表記を組み立てて表示する。
     // 端点の緊急ポイントと重なる所は、マーカーが上の層にあって勝つ。
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
       if (p.type === 'spot') {
-        layer.bindPopup(`<strong>${escapeHtml(p.name ?? '')}</strong>`);
+        layer.bindPopup(`<strong>${escapeHtml(featureName(p))}</strong>`);
         return;
       }
       if (p.type === 'route') {
         // bindPopup は使わない。押した位置の近くにポイントがあればそちらを開くため(→ openRouteOrNearbyPoint)
-        const html = `<strong>${escapeHtml(routeSectionLabel(p.id))}</strong>`;
+        const html = `<strong>${escapeHtml(featureName(p) || routeSectionLabel(p.id))}</strong>`;
         layer.on('click', (e) => openRouteOrNearbyPoint(e, html));
       }
     }

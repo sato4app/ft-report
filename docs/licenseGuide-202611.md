@@ -1,7 +1,7 @@
 # 他リポジトリへの MIT License 追加手順
 
-**バージョン:** 1.0
-**最終更新日:** 2026年9月20日
+**バージョン:** 1.1
+**最終更新日:** 2026年11月22日
 **対象:** 運用・開発担当者
 
 ---
@@ -30,16 +30,16 @@ minoh-hiking で行った **MIT License の登録**を、sato4app の他の公�
 |---|---|---|
 | ColorSample | `アプリ(PWA対応)\ColorSample` | 2026 |
 | log-timer | `アプリ(PWA対応)\log-timer` | 2026 |
-| PayNote | `アプリ(PWA対応)\PayNote` | 2026 |
+| pay-note | `アプリ(PWA対応)\pay-note` | 2026 |
 | Portfolio | `アプリ(PWA対応)\Portfolio` | 2026 |
 | TabataTimer | `アプリ(PWA対応)\TabataTimer` | 2025 |
-| DownloadArea | `ハイキングアプリ\DownloadArea` | 2026 |
-| GeoReferencer | `ハイキングアプリ\GeoReferencer` | 2025 |
-| MapEditor | `ハイキングアプリ\MapEditor` | 2025 |
-| MapGPS | `ハイキングアプリ\MapGPS` | 2025 |
-| MapPublisher | `ハイキングアプリ\MapPublisher` | 2026 |
-| PointGPS | `ハイキングアプリ\PointGPS` | 2025 |
-| PointMarker | `ハイキングアプリ\PointMarker` | 2025 |
+| DownloadArea | `地図アプリ\DownloadArea` | 2026 |
+| GeoReferencer | `地図アプリ\GeoReferencer` | 2025 |
+| MapEditor | `地図アプリ\MapEditor` | 2025 |
+| MapGPS | `地図アプリ\MapGPS` | 2025 |
+| MapPublisher | `地図アプリ\MapPublisher` | 2026 |
+| PointGPS | `地図アプリ\PointGPS` | 2025 |
+| PointMarker | `地図アプリ\PointMarker` | 2025 |
 | rename-files | `ツール(PWA非対応)\rename-files` | 2026 |
 | ResizeImage | `ツール(PWA非対応)\ResizeImage` | 2025 |
 | esp32-1st-check | `電子工作\ESP32-C3\esp32-1st-check` | 2026 |
@@ -74,7 +74,7 @@ git fetch origin; git status -sb   # ahead/behind が付かないこと
 minoh-hiking の LICENSE をひな形にする（MIT の定型文。書き換えるのは**年と著作者名の1行だけ**）。
 
 ```powershell
-copy "C:\Users\showa\Documents\ハイキングアプリ\minoh-hiking\LICENSE" .\LICENSE
+copy "C:\Users\showa\Documents\地図アプリ\minoh-hiking\LICENSE" .\LICENSE
 ```
 
 置いた後、3行目を確認する。

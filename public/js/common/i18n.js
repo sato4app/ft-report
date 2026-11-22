@@ -8,7 +8,8 @@
 //   日本語(既定)のときは何もしない(HTML の日本語がそのまま表示される)。
 // - 動的なJS文言(トースト・confirm・alert 等): 生成箇所で t(key, params) を呼ぶ。
 // - 変数埋め込みは {name} 形式(日英で語順が変わるため文字列連結はしない)。
-// - 地図データ(geojson のポイント名・スポット名等)は翻訳対象外(日本語のまま)。
+// - 地図データ(geojson)の名称は辞書に持たない。緊急ポイント・ルート・スポットは配信データの
+//   英語名(englishName)を使い(map-overlays.js の featureName)、通行止め等の地点名・理由は日本語のまま。
 
 import { LANGUAGE_KEY } from './config.js';
 import { readLocal, writeLocal } from './storage.js';

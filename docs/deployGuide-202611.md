@@ -1,11 +1,11 @@
 # 箕面ハイキングマップ デプロイ手順書
 
-**バージョン:** 1.11
-**最終更新日:** 2026年11月20日
+**バージョン:** 1.12
+**最終更新日:** 2026年11月22日
 **対象:** 運用・開発担当者
 **関連:**
 [機能仕様 `funcspec-202611.md`](funcspec-202611.md) /
-[公開API 仕様 `publish-api-202609.md`](publish-api-202609.md)
+[公開API 仕様 `publish-api-202611.md`](publish-api-202611.md)
 
 ---
 
@@ -56,7 +56,7 @@ push (<確認したコミット>:release)
   +--> Vercel Production:  public/ (app) + api/ (publish API) + Blob (store)
                            https://minoh-hiking.vercel.app/
 
-MapPublisher -- POST /api/mapdata, /api/closures --> Blob -- GET --> 両方のアプリ
+MapPublisher -- POST /api/mapdata, /api/closures, /api/tiles --> Blob -- GET --> 両方のアプリ
 ```
 
 > Vercel の本番のブランチは、管理画面の **Settings → Environments → Production → Branch Tracking** で
@@ -99,7 +99,7 @@ Vercel プロジェクト **minoh-hiking** に必要なのは、**Blob ストア
 
 ### 4.1 Blob ストアを接続する
 
-公開データ（地図データ・通行止め）の実体を置く場所。**接続するだけでよい**。
+公開データ（地図データ・通行止め・タイル一覧）の実体を置く場所。**接続するだけでよい**。
 フォルダやファイルを手で作る必要は無く、初回公開時に
 [`api/_lib/store.js`](../api/_lib/store.js) が作る。
 
@@ -129,25 +129,28 @@ Vercel プロジェクト **minoh-hiking** に必要なのは、**Blob ストア
 
 | Blob 上のパス | 中身 |
 |---|---|
-| `manifest.json` | 各データセットの version・updatedAt・件数（`GET /api/manifest` の実体、**採番の基準**） |
+| `manifest.json` | 各データセットの version・updatedAt・件数（`GET /api/manifest` の実体、**version の重複判定の基準**） |
 | `mapdata/minoh-hiking-mapdata.geojson` | 緊急ポイント・ルート・スポット（最新） |
 | `mapdata/previous.geojson` | 同・前回分（1世代のみ） |
 | `closures/minoh-hiking-closure.geojson` | 通行止め・通行困難地点（最新） |
 | `closures/previous.geojson` | 同・前回分（1世代のみ） |
+| `tiles/tile_manifest.json` | オフライン地図のタイル一覧（最新） |
+| `tiles/previous.json` | 同・前回分（1世代のみ） |
 
 > **フォルダを手で作る必要は無い。** Blob に「フォルダ」という実体は無く、パス名の `/` を
 > 管理画面がフォルダのように見せているだけ。すでに運用している `closures/` はそのまま使い
-> （本体のパスは旧方式から変えていない）、`mapdata/` と `manifest.json` は**初回公開のときにできる**。
-> `previous.geojson` は退避元ができる2回目の公開から作られる。
+> （本体のパスは旧方式から変えていない）、`mapdata/`・`tiles/` と `manifest.json` は**初回公開のときにできる**。
+> 前回分（`previous.*`）は退避元ができる2回目の公開から作られる。
 > 旧方式の `closures/history/` は新方式では使わない（削除は [6.3](#63-リリース後の後始末)）。
 
 > ストアはプロジェクトではなく**アカウント（チーム）に属する**。作り直すと中身は空になり、
-> `manifest.json` が無くなるため version の採番も 1 からやり直しになる。
+> `manifest.json` が無くなるため version の重複判定も効かなくなる。端末は version が同じだと更新に
+> 気づかないので、作り直した後は**それまでに使っていない番号**で公開する。
 > 中身を残したまま別プロジェクトから使いたいときは、作り直さず **Connect Store** で接続する。
 
 ### 4.2 公開トークン `MAP_PUBLISH_TOKEN` を設定する
 
-MapPublisher からの公開（POST）を通すための共有トークン。mapdata・closures 共通で1つ。
+MapPublisher からの公開（POST）を通すための共有トークン。mapdata・closures・tiles 共通で1つ。
 
 1. ランダムな32バイトの値を作る（PowerShell）:
 
@@ -180,7 +183,7 @@ $b = [byte[]]::new(32)
 
 4. **Save** する
 5. 値はパスワードと同じ扱いにする。Git・`public/`・チャットに貼らない
-   （`.gitignore` が `.env` / `.env.local` を除外しているのは、ローカルに置いたときの保険）
+   （`.gitignore` が `.env` / `.env.*` を除外しているのは、ローカルに置いたときの保険）
 
 ### 4.3 再デプロイして有効化する
 
@@ -362,6 +365,9 @@ git ls-remote origin main release   # 2つが同じコミットなら、確認�
 - OK を押すと最新を取得して再読み込みする。**ダウンロード済みの地図タイルは消えない**
 - キャンセルした端末は、そのセッションでは再び確認しない。次に開き直してボタンをタップしたときに
   もう一度確認が出る
+- ボタンを押す前に、**ブラウザが自分で新しい版へ入れ替える**こともある。このときは「アプリの新しい
+  バージョンを受け取りました」と表示され、ボタンのタップで再読み込みの確認が出る。`2026-10-21.1` 以前の版から
+  入れ替わったときは、Service Worker が画面を読み込み直す（→ 機能仕様 6.2）
 - 反映は**端末が次に起動し、起動時画面のボタンをタップしたとき**。全端末に行き渡るまで日数がかかる前提で、
   旧ファイルの削除は次のリリース以降にする（→ ④）
 
@@ -443,7 +449,7 @@ GitHub Pages で確認している間、新しいアプリは**古い（本番�
   （2026.12 の移行と同じ考え方 → [6章](#6-今回の移行デプロイ2026121回限り)）
 
 API の契約（エンドポイント・応答・公開スキーマ）を変えるときは、
-[`publish-api-202609.md`](publish-api-202609.md) の契約バージョンを更新し、MapPublisher 側にも反映する。
+[`publish-api-202611.md`](publish-api-202611.md) の契約バージョンを更新し、MapPublisher 側にも反映する。
 
 ---
 
@@ -544,9 +550,9 @@ curl.exe -s -o NUL -w "%{http_code}\n" -X POST -H "Content-Type: application/jso
 
 確認すること:
 
-- `GET /api/manifest` が `mapdata` / `closures` の version・updatedAt・件数を返す
+- `GET /api/manifest` が `mapdata` / `closures` / `tiles` の version・updatedAt・件数を返す
 - `GET /api/mapdata` の件数が公開した件数と一致する（初回公開なら 668 件）
-- 公開のたびに version の連番が1つ進む（`2026.1` → `2026.2`）
+- 公開時に送った version（`yyyy.nn`。例: `2026.02`）に変わっている
 - トークン無し・誤トークンの POST が `401`
 
 ### 7.2 アプリ側（ブラウザ）
@@ -568,8 +574,8 @@ curl.exe -s -o NUL -w "%{http_code}\n" -X POST -H "Content-Type: application/jso
 
 | 状況 | 対処 |
 |---|---|
-| 誤ったデータを公開した | **正しいデータをもう一度公開する**（全置換）。直前の内容は Blob の `previous.geojson` に1世代だけ残っている |
-| 公開が `500` で失敗した | **もう一度公開する。** `manifest.json` が進んでいないため同じ version が採番される（冪等）。二重に version が飛ぶことはない |
+| 誤ったデータを公開した | **正しいデータをもう一度公開する**（全置換）。直前の内容は Blob の `previous.geojson`（タイル一覧は `previous.json`）に1世代だけ残っている |
+| 公開が `500` で失敗した | **もう一度公開する。** `manifest.json` が進んでいないため、同じ version のまま公開できる（冪等）。番号を進める必要はない |
 | GitHub Pages で不具合を見つけた（リリース前） | `main` で直す（`git revert` か修正）→ GitHub Pages で確認し直す。**`release` には出さない**。本番は変わっていないので利用者への影響は GitHub Pages 版だけ |
 | 本番（Vercel）に不具合を出してしまった | Vercel の Instant Rollback で前のデプロイに戻す（すぐ効く）。**あわせて `main` を `git revert`** → GitHub Pages で確認 → **`release` に push** する（`release` を戻さないと、次のリリースで再発する）。`release` を `--force` で巻き戻さない（`main` と食い違い、次の push が断られる） |
 | GitHub Pages 側だけ古い | Actions の `Deploy to GitHub Pages` が失敗していないか確認し、`workflow_dispatch` で再実行する |
@@ -587,12 +593,12 @@ curl.exe -s -o NUL -w "%{http_code}\n" -X POST -H "Content-Type: application/jso
 |---|---|---|
 | 公開が `503`（トークン未設定） | `MAP_PUBLISH_TOKEN` 未設定、または**設定後に再デプロイしていない** | 環境変数を確認して再デプロイ |
 | 公開が `401` | トークン不一致 | MapPublisher の保存済みトークンを入れ直す |
-| 公開が `400` | データが検証に通らない | API が返す日本語メッセージのとおりに直す（判定は [`publish-api-202609.md`](publish-api-202609.md) §6 にのみ置いている） |
+| 公開が `400` | version の形式違い・公開中と同じ version、またはデータが検証に通らない | API が返す日本語メッセージのとおりに直す（判定は [`publish-api-202611.md`](publish-api-202611.md) §6 にのみ置いている） |
 | 公開したのにアプリに出ない | 端末がまだ更新版を確認していない | 起動時画面に戻ってボタンのどれかをタップする（またはアプリを開き直す）。公開は各端末が次に起動したとき、または起動時画面のボタンをタップしたときに反映される。マップ画面を開いたままの間は確認しない |
 | 旧 UI と新 UI が混ざる | `SHELL_CACHE` のバンプ漏れ | キャッシュ名を進めて出し直す |
 | 端末で地図が出ない・一部の操作が効かない（コンソールに `Cannot read properties of null`） | 端末に**古い `index.html`** が残ったまま新しい JS が読み込まれた（シェルの新旧が混ざった状態） | 起動時画面のボタンをタップ → 更新確認で OK。直らなければブラウザのサイトデータを削除する。アプリ 2026.57 以降は初期化が途中で止まらず、地図表示と更新確認は動く |
 | 起動画面の画像やモジュールが 404 | 差し替えた旧ファイルを同じリリースで消した | ファイルを戻し、次のリリース以降に削除する |
-| オフラインで地図データが出ない | Service Worker の掃除で `mapdata-cache` / `closures-cache` を消している | `service-worker.js` の `APP_MANAGED_CACHES` に入っているか確認する |
+| オフラインで地図データ・タイル一覧が出ない | Service Worker の掃除で `mapdata-cache` / `closures-cache` / `tiles-cache` を消している | `service-worker.js` の `APP_MANAGED_CACHES` に入っているか確認する |
 | GitHub Pages 版だけデータが出ない | Vercel 側の API が落ちている／CORS 設定の変更 | `curl.exe` で Vercel の API を直接確認する |
 | push したのに Vercel 版が変わらない | `main` にしか push していない（Vercel の本番は `release` を見ている） | 確認後に `release` へ push する（→ [5.1](#51-手順) ⑩） |
 | GitHub Pages 版で、新しい API を使う機能だけ動かない | `api/` の変更がまだ本番（`release`）に出ていない。GitHub Pages 版は本番の API を使う | API を先にリリースする（→ [5.4](#54-api-を変更するとき)） |
@@ -636,4 +642,5 @@ curl.exe -s -o NUL -w "%{http_code}\n" -X POST -H "Content-Type: application/jso
 | 1.8 | 2026-09-23 | アプリ 2026.57 に追随。**9章に「端末で地図が出ない・一部の操作が効かない」**（古い `index.html` と新しい JS が混ざった状態）の行を追加した。初期化が途中で止まらなくなり、その状態でも地図表示と起動時画面のボタンからの更新確認は動く |
 | 1.9 | 2026-09-30 | アプリ 2026.70 に追随。公開データ（地図データ・通行止め・タイル一覧）の更新版の確認が「起動時のみ」から「起動時と、起動時画面のボタンをタップしたとき」に変わったため、9章の「公開したのにアプリに出ない」の原因と対処を改めた |
 | 1.10 | 2026-10-05 | アプリ 2026.72 に追随。起動時画面の「設定・情報/Settings & Info」が「情報・言語/Info & Language」に改称されたため、5.1・7.2 の確認箇所の書き方を合わせた |
+| 1.12 | 2026-11-22 | 実装に合わせて記述を修正（手順の変更なし）。公開データセットに `tiles` を加え（2章・4.1・4.2・7.1・8章・9章）、version の「サーバー採番」の記述を送信側指定・重複判定に改めた（4.1・7.1・8章・9章。6章は移行当時の記録のため据え置き）。5.2 にブラウザによる自動の入れ替えを追記 |
 | 1.11 | 2026-11-20 | アプリのファイル構成の変更（`app-shell-2026-11-20.6`。JS を `public/js/` の機能別のフォルダへ、CSS を `public/css/` へ移した）に追随。5.1 ③ に置き場所を追記し、1章の `config.js` へのリンクを `public/js/common/config.js` に直した |
