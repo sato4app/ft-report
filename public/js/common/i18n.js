@@ -508,45 +508,6 @@ const DICT = {
   'qr.ariaImage': { ja: 'QRコード', en: 'QR code' },
   'qr.failed': { ja: 'QRコードを作成できませんでした', en: 'Failed to create the QR code' },
 
-  // ----- 「ホーム画面に追加」の案内(起動時画面の下部。install-banner.js) -----
-  // スマホ・タブレットのブラウザで開いたときだけ出す。見出し(title*)と本文(text*)は端末で出し分ける。
-  // 本文の {shareIcon} は、iPhone・iPad の共有ボタンの図形に置き換えて表示する。
-  // メニューの項目名(「ホーム画面に追加」「アプリをインストール」など)は、各ブラウザの表記に合わせる
-  'install.titleIos': { ja: 'ホーム画面に追加してお使いください', en: 'Add to Your Home Screen' },
-  'install.textIos': {
-    ja: '共有ボタン{shareIcon}(見当たらないときは「…」の中)から「ホーム画面に追加」を選び、追加したアイコンから開いてください。',
-    en: 'Tap the Share button {shareIcon} (look under "…" if you cannot see it), choose "Add to Home Screen", then open the app from the new icon.'
-  },
-  'install.noteIos': {
-    ja: 'ブラウザで開いたままだと、7日間開かないとダウンロードした地図データが消えることがあります。ブラウザで保存したデータはアプリに引き継がれないため、追加済みのときはアイコンから開いてください。',
-    en: 'In the browser, downloaded map data may be deleted if you do not open the app for 7 days. Data saved in the browser does not carry over to the app, so if you have already added it, open the app from its icon.'
-  },
-  'install.titleAndroid': { ja: 'アプリとしてインストールできます', en: 'Install This App' },
-  // ブラウザがインストールの確認を出せるとき(「インストール」ボタンを出す)
-  'install.textAndroidPrompt': {
-    ja: 'インストールすると、ホーム画面のアイコンから全画面で開けます。ダウンロードした地図データも消されにくくなります。',
-    en: 'Once installed, the app opens full screen from its icon on your Home screen, and downloaded map data is less likely to be deleted.'
-  },
-  // ブラウザがインストールの確認を出せないとき(メニューからの手順を案内する)
-  'install.textAndroidMenu': {
-    ja: 'ブラウザのメニュー(︙)から「アプリをインストール」または「ホーム画面に追加」を選び、追加したアイコンから開いてください。',
-    en: 'From the browser menu (⋮), choose "Install app" or "Add to Home screen", then open the app from the new icon.'
-  },
-  // Android で、アプリとして起動したことがある端末(インストール済み)をブラウザで開いたとき
-  'install.titleInstalled': { ja: 'インストール済みです', en: 'Already Installed' },
-  'install.textInstalled': {
-    ja: 'ホーム画面のアイコンから開いてください。アイコンが見当たらないときは、ブラウザのメニュー(︙)から追加し直してください。',
-    en: 'Open the app from its icon on your Home screen. If you cannot find the icon, add it again from the browser menu (⋮).'
-  },
-  // LINE などのアプリの中のブラウザで開いたとき(ホーム画面に追加できない)
-  'install.titleInApp': { ja: 'ブラウザで開き直してください', en: 'Open in Your Browser' },
-  'install.textInApp': {
-    ja: 'アプリの中で開いたページは、ホーム画面に追加できません。メニューから「ブラウザで開く」(Safari・Chrome など)を選んで開き直してください。',
-    en: 'Pages opened inside another app cannot be added to the Home Screen. Choose "Open in browser" (Safari, Chrome, etc.) from the menu and open the page again.'
-  },
-  'install.installBtn': { ja: 'インストール', en: 'Install' },
-  'install.optOut': { ja: '今後表示しない', en: "Don't Show Again" },
-
   // ----- 使い方ガイド(起動画面の「使い方」・初回起動時の自動表示) -----
   // guide.<ページのkey>Title / guide.<ページのkey>Body が1ページ分の文言。
   // key は guide.js の GUIDE_STEPS と一致させる。本文の改行(\n)はそのまま表示される。

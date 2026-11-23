@@ -451,13 +451,10 @@ textarea {
   user-select: none;
 }
 
-/* 高さは中身(ボタンの並び)を下限に、残りいっぱいまで伸ばす(1 0 auto)。
-   下に「ホーム画面に追加」の案内(.install-banner)を出したとき、高さが足りなければ
-   ボタンの並びではなく案内の側を縮める(案内は中でスクロールする) */
 .home-menu {
   position: relative;
   z-index: 2;
-  flex: 1 0 auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -488,146 +485,6 @@ textarea {
 
 .home-btn:active {
   transform: scale(0.98);
-}
-
-/* ===== 「ホーム画面に追加」の案内(起動時画面の下部。install-banner.js) ===== */
-/* ボタンの並び(.home-menu)の下に、重ねずに並べる。重ねると背の低い画面でボタンを隠すため
-   (並びは残りの高さの中で上下中央に寄る)。
-   外枠(.install-banner)は透明だが、幅いっぱいでタップを受け止める。起動時画面は
-   pointer-events: none のため、カードの周りのすき間を触ると後ろの地図が動いてしまう */
-.view-home > .install-banner {
-  pointer-events: auto;
-}
-
-.install-banner {
-  position: relative;
-  z-index: 2;
-  flex: 0 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0 0.75rem 0.75rem;
-}
-
-.install-banner[hidden] {
-  display: none;
-}
-
-/* 使い方ガイドを開いている間は隠す。ガイドは、この案内が無い起動時画面のボタンの位置で
-   吹き出しの置き場所と本文の長さを決めているため(案内があるとボタンの並びが上へ寄る) */
-body:has(> .guide:not([hidden])) .install-banner {
-  display: none;
-}
-
-/* 背の低い画面(横向きなど)では出さない。ボタンの並びだけで高さを使い切り、
-   案内を出してもほとんど見えないため */
-@media (max-height: 480px) {
-  .install-banner {
-    display: none;
-  }
-}
-
-/* 縦に積み、高さが足りないときは本文(.install-banner-content)だけを縮めてスクロールする。
-   カード全体をスクロールさせると、「今後表示しない」「閉じる」が隠れて気づかれにくいため */
-.install-banner-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  width: min(420px, 100%);
-  margin: 0 auto;
-  padding: 0.7rem 1rem 0.6rem;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.install-banner-title {
-  flex-shrink: 0;
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #2c7a3d;
-}
-
-.install-banner-content {
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.install-banner-text {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: #333;
-}
-
-.install-banner-note {
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: #6b7280;
-}
-
-.install-banner-note[hidden] {
-  display: none;
-}
-
-/* 本文中の共有ボタンの図形(iPhone・iPad)。文字と同じ行に収める */
-.install-share-icon {
-  display: inline-block;
-  width: 1.15em;
-  height: 1.15em;
-  margin: 0 0.1em;
-  vertical-align: -0.2em;
-  color: #2563eb;
-}
-
-.install-share-icon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* 下の行: 左に「今後表示しない」、右に「インストール」「閉じる」 */
-.install-banner-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.4rem 0.5rem;
-  flex-shrink: 0;
-  margin-top: 0.5rem;
-}
-
-.install-banner-optout {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 40px;
-  margin-right: auto;
-  font-size: 0.9rem;
-  color: #444;
-  cursor: pointer;
-}
-
-.install-banner-optout input {
-  width: 1.2rem;
-  height: 1.2rem;
-  margin: 0;
-  accent-color: #2c7a3d;
-}
-
-.install-banner-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* .btn(高さ 48px)より少し低くして、案内全体の高さを抑える。
-   .btn は後ろ(ボタン共通)で定義しているため、2つのクラスで指定して上書きする */
-.btn.install-banner-btn {
-  min-height: 40px;
-  padding: 0.45rem 1rem;
-  font-size: 0.95rem;
 }
 
 /* ===== マップビュー ===== */

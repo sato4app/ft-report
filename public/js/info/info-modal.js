@@ -152,11 +152,9 @@ export function openAppSettingsModal() {
 
 // 「言語の設定/Language Settings」の変更でリロードした直後だけ、情報・言語モーダルを
 // 開き直す。フラグは一度きりの復元用なので、読み取ったら必ず削除する
-// (以降の通常起動では起動画面のまま)。開き直したら true(言語の変更による再読み込みの直後だった)を返す
+// (以降の通常起動では起動画面のまま)。
 export function restoreAppSettingsModalAfterReload() {
-  if (takeSession(REOPEN_APP_SETTINGS_KEY) !== '1') return false;
-  openAppSettingsModal();
-  return true;
+  if (takeSession(REOPEN_APP_SETTINGS_KEY) === '1') openAppSettingsModal();
 }
 
 // ===== 外部サイトを開く確認 =====

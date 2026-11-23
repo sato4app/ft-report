@@ -44,7 +44,6 @@
 //     version-history.js … バージョン履歴の記載内容(正本)と描画
 //     guide.js          … 使い方ガイド(画面を順に案内するオーバーレイ)
 //     qrcode.js         … QRコードの生成(外部ライブラリ非依存)
-//     install-banner.js … 「ホーム画面に追加」の案内(スマホ・タブレットのブラウザで開いたとき)
 
 import {
   initMap, resizeMap, getMap, setZoomDisplayVisible,
@@ -87,7 +86,6 @@ import {
   bindPhotoEvents, applyPhotoControlsForView, updatePhotoPanel, restorePhotosFromStorage
 } from './photo/photo-ui.js';
 import { bindPhotoViewEvents } from './photo/photo-view.js';
-import { initInstallBanner } from './info/install-banner.js';
 
 // ===== 状態 =====
 let currentView = 'home';
@@ -209,7 +207,7 @@ async function init() {
   showView('home');
   // 言語変更によるリロード直後なら、情報・言語モーダルを開いた状態に戻す。
   // showView() は開いているモーダルを閉じるため、その後に呼ぶ
-  const reloadedForLanguage = restoreAppSettingsModalAfterReload();
+  restoreAppSettingsModalAfterReload();
 
   // 使い方ガイド。ページによって画面と表示設定パネルを切り替えるため、
   // その操作だけを関数で渡す(guide.js から app.js を import すると相互参照になる)
@@ -220,16 +218,9 @@ async function init() {
     setLayerPanelOpen
   });
   // アプリ更新による再読み込みの直後なら、更新前の画面(マップ画面・開いていたモーダル・使い方)に戻す
-  const reloadedForUpdate = restoreScreenAfterReload();
+  restoreScreenAfterReload();
   // 初回起動時だけ自動で開く(2回目以降は起動画面の「使い方」ボタンから)
   maybeAutoOpenGuide();
-  // スマホ・タブレットのブラウザで開いたときは、ホーム画面に追加するよう案内する(起動のたび)。
-  // アプリ自身の再読み込み(言語の切替・アプリの更新)の直後は、使っている途中なので出さない。
-  // 使い方ガイドと同時に出しても、ガイドを開いている間はカードを隠す(style.css)ため、
-  // 初回はガイドを閉じた後に見える
-  initStep('initInstallBanner', () => {
-    initInstallBanner({ show: !reloadedForLanguage && !reloadedForUpdate });
-  });
 
   requestAnimationFrame(() => resizeMap());
 }
@@ -500,14 +491,13 @@ function saveScreenForReload() {
   writeSession(RESTORE_SCREEN_KEY, JSON.stringify(screen));
 }
 
-// 控えは一度きりの復元用なので、読み取ったら必ず削除する(以降の通常起動では起動画面のまま)。
-// 戻したら true(アプリ更新による再読み込みの直後だった)を返す
+// 控えは一度きりの復元用なので、読み取ったら必ず削除する(以降の通常起動では起動画面のまま)
 function restoreScreenAfterReload() {
   let screen = null;
   try {
     screen = JSON.parse(takeSession(RESTORE_SCREEN_KEY));
   } catch { /* 壊れた控えは使わない */ }
-  if (!screen || typeof screen !== 'object') return false;
+  if (!screen || typeof screen !== 'object') return;
   if (screen.view === 'map') {
     showView('map');
     const m = screen.map;
@@ -518,7 +508,6 @@ function restoreScreenAfterReload() {
   }
   RESTORABLE_MODALS[screen.modal]?.();
   if (screen.guide) openGuide();
-  return true;
 }
 
 // ===== 更新版の確認(起動画面のボタンのタップ時) =====
