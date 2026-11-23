@@ -29,6 +29,12 @@ export const GUIDE_SEEN_KEY = 'minoh-hiking.guide-seen';
 // マップのメニュー(表示設定パネル)のトグルの状態。{ <トグルの id>: true/false } の JSON。
 // 保存が無い・読めないトグルは HTML の初期値で始める。
 export const MAP_TOGGLES_KEY = 'minoh-hiking.map-toggles';
+// 「ホーム画面に追加」の案内(install-banner.js)を「今後表示しない」にしたか。'1' = 出さない。
+export const INSTALL_BANNER_OFF_KEY = 'minoh-hiking.install-banner-off';
+// アプリとして(ホーム画面のアイコンから)起動したことがあるか。'1' = ある。
+// Android はブラウザとアプリで保存領域が共通のため、ブラウザで開いたときにもこの印が読め、
+// 「インストール済み」と案内できる(iOS は保存領域が別々のため、ブラウザからは読めない)。
+export const INSTALLED_AS_APP_KEY = 'minoh-hiking.installed-as-app';
 
 // ===== sessionStorage キー =====
 // アプリ更新による再読み込みの前に控える更新先の版。SW の切替が未完了で版が不一致に

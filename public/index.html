@@ -82,6 +82,31 @@
       <!-- 使い方(アプリの使い方を1ページずつ案内するガイドを開く。初回起動時は自動で開く) -->
       <button type="button" class="home-btn" id="btnOpenGuide" data-guide="homeGuide" data-i18n="guide.title">使い方</button>
     </nav>
+    <!-- 「ホーム画面に追加」の案内(動作の説明は install-banner.js の先頭)。
+         スマホ・タブレットのブラウザで開いたときだけ、起動のたびに出す。
+         見出し・本文・補足は端末に合わせて install-banner.js が入れるため data-i18n は付けない。
+         「インストール」ボタンは、ブラウザがインストールの確認を出せるとき(Android の Chrome など)だけ出す -->
+    <div class="install-banner" id="installBanner" hidden role="region" aria-labelledby="installBannerTitle">
+      <div class="install-banner-panel">
+        <h2 class="install-banner-title" id="installBannerTitle"></h2>
+        <!-- 背の低い画面では、見出しと下の行(今後表示しない・閉じる)は残してこの部分だけをスクロールする -->
+        <div class="install-banner-content">
+          <p class="install-banner-text" id="installBannerText"></p>
+          <p class="install-banner-note" id="installBannerNote" hidden></p>
+        </div>
+        <div class="install-banner-actions">
+          <label class="install-banner-optout">
+            <input type="checkbox" id="installBannerOptOut" />
+            <span data-i18n="install.optOut">今後表示しない</span>
+          </label>
+          <!-- 2つのボタンはひとまとまりにし、幅が足りないときは一緒に次の行へ送る -->
+          <div class="install-banner-buttons">
+            <button type="button" class="btn btn-primary install-banner-btn" id="btnInstallApp" hidden data-i18n="install.installBtn">インストール</button>
+            <button type="button" class="btn btn-neutral install-banner-btn" id="btnInstallBannerClose" data-i18n="common.close">閉じる</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ハイキングマップ表示(地図そのものは body 直下の #map を共有) -->
