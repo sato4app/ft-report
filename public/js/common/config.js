@@ -50,9 +50,8 @@ export const RESTORE_SCREEN_KEY = 'minoh-hiking.restore-screen';
 // 仕様は docs/publish-api-202609.md。公開ストアは Vercel 側にあるため、GitHub Pages 版からは
 // Vercel 本番の絶対 URL を参照する(API 側で CORS 許可済み)。
 const PUBLISH_API_ORIGIN = 'https://minoh-hiking.vercel.app';
-const PUBLISH_API_BASE = location.hostname.endsWith('github.io')
-  ? `${PUBLISH_API_ORIGIN}/api`
-  : '/api';
+// ft-report: 公開API は minoh-hiking の本番にしか無いため、配信先(GitHub Pages・Vercel・ローカル)によらず常に参照する
+const PUBLISH_API_BASE = `${PUBLISH_API_ORIGIN}/api`;
 // 起動時にまず読む version 一覧(数百バイト)。相違があるときだけ本体を取りに行く
 export const PUBLISH_MANIFEST_URL = `${PUBLISH_API_BASE}/manifest`;
 export const MAPDATA_API_URL = `${PUBLISH_API_BASE}/mapdata`;

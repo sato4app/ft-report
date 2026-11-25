@@ -86,6 +86,7 @@ import {
   bindPhotoEvents, applyPhotoControlsForView, updatePhotoPanel, restorePhotosFromStorage
 } from './photo/photo-ui.js';
 import { bindPhotoViewEvents } from './photo/photo-view.js';
+import { initFt } from './ft/ft-main.js';
 
 // ===== 状態 =====
 let currentView = 'home';
@@ -223,6 +224,7 @@ async function init() {
   maybeAutoOpenGuide();
 
   requestAnimationFrame(() => resizeMap());
+  initStep('initFt', initFt); // ft-report だけの初期化(js/ft/ft-main.js)
 }
 
 // 移動経路・写真のパネル表示をまとめて最新化する(起動時・パネルを開いたとき)

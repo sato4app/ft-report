@@ -1,0 +1,5 @@
+# ft-report が中身をすべて持つファイル。minoh-hiking から取り込むときに両方で変わっていたら、ft-report 側を残す。
+# 効かせるには、手元のリポジトリで「git config merge.ours.driver true」を実行しておく
+# (リポジトリの外には保存されない設定なので、clone し直したら再度必要)。
+README.md merge=ours
+CLAUDE.md merge=ours

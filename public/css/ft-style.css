@@ -1,0 +1,74 @@
+/* ft-report(箕面-倒木報告)だけのスタイル。
+   index.html で style.css の直後に読み込み、style.css の指定を上書きする。
+   minoh-hiking 由来の style.css は書き換えない(取り込みのたびにぶつからないようにするため)。
+   ft-report で足す画面部品(「倒木報告」のボタンなど)のスタイルも、このファイルに置く。 */
+
+/* ===== テーマ色(オレンジ) =====
+   style.css でテーマ色(緑 #2c7a3d)を使っている所を、オレンジに置き換える。
+   - --ft-theme       … 線・枠・回転表示など、文字以外に使う色(manifest の theme_color と同じ)
+   - --ft-theme-text  … 文字の色と、白い文字を載せる背景の色。白との明るさの差を確保するため濃くする
+   - --ft-theme-hover … 白い文字を載せたボタンを指したときの色
+   緑のままにしたもの: トグルの On と記録開始ボタン(#1f7a4d)、成功のメッセージ(#166534)。
+   「進む・成功」を表す緑で、テーマ色ではないため。 */
+:root {
+  --ft-theme: #ef6c00;
+  --ft-theme-text: #c2410c;
+  --ft-theme-hover: #9a3412;
+  --ft-theme-tint: #fff1e6;   /* 薄い背景(開いた項目の見出し) */
+  --ft-theme-track: #fbd9bf;  /* 処理中の回転表示の下地 */
+}
+
+/* 使い方ガイドの吹き出しの見出し */
+.guide-tip-title {
+  color: var(--ft-theme-text);
+}
+
+/* 処理中の回転表示 */
+.blocking-spinner {
+  border-color: var(--ft-theme-track);
+  border-top-color: var(--ft-theme);
+}
+
+/* 写真の一覧で、一覧を開く前に表示していた写真の枠 */
+.photo-list-tile.is-current::after {
+  border-color: var(--ft-theme);
+}
+
+/* モーダルの見出しの帯 */
+.modal-header {
+  background: var(--ft-theme-text);
+}
+
+/* 外部サイトを開く前の確認画面のアイコン */
+.external-site-icon {
+  color: var(--ft-theme-text);
+}
+
+/* 「このアプリについて」のリンク(GitHub / Portfolio) */
+.info-link {
+  color: var(--ft-theme-text);
+}
+
+/* 情報・言語の、開いている項目の見出し */
+.info-disclosure[aria-expanded="true"] {
+  background: var(--ft-theme-tint);
+}
+
+/* よくある質問のまとまりの見出しの左線 */
+.faq-section-title {
+  border-left-color: var(--ft-theme);
+}
+
+/* よくある質問の参照(→Q5 など) */
+.faq-ref {
+  color: var(--ft-theme-text);
+}
+
+/* 主となるボタン(出力・ダウンロード・次へ など) */
+.btn-primary {
+  background: var(--ft-theme-text);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: var(--ft-theme-hover);
+}

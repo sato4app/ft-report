@@ -7,31 +7,33 @@
        iOS はこの指定では利用者の拡大を止めないため、style.css の touch-action と
        page-guard.js の guardPageViewport でも止めている -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#2c7a3d" />
-  <title>箕面ハイキング</title>
+  <meta name="theme-color" content="#ef6c00" />
+  <title>箕面-倒木報告</title>
 
   <!-- ホーム画面に追加したときのアプリ名は、スマホ本体の言語で決める(アプリ内の言語設定ではない)。
        日本語なら「箕面ハイキング」、それ以外は「Minoh Hiking」。直後のスクリプトが切り替える。
        Android は manifest の short_name、iOS は apple-mobile-web-app-title を名前に使う。
        名前は追加した時点で決まり、追加後にスマホの言語を変えても変わらない -->
-  <link rel="manifest" id="appManifest" href="manifest.webmanifest" />
-  <meta name="apple-mobile-web-app-title" id="appHomeScreenTitle" content="箕面ハイキング" />
+  <link rel="manifest" id="appManifest" href="ft-manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-title" id="appHomeScreenTitle" content="箕面-倒木報告" />
   <script>
     // ブラウザが manifest を読む前に済ませるため、head 内で同期的に実行する
     (function () {
+      return; // ft-report: 日本語のみ対応のため、端末の言語で manifest と名前を切り替えない
       var lang = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
       if (lang === 'ja' || lang.indexOf('ja-') === 0) return;
       document.getElementById('appManifest').setAttribute('href', 'manifest-en.webmanifest');
       document.getElementById('appHomeScreenTitle').setAttribute('content', 'Minoh Hiking');
     })();
   </script>
-  <link rel="icon" href="icons/icon-192-v2.png" />
-  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="icon" href="icons/ft-icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/ft-icon-180.png" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="" />
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/ft-style.css" />
 
   <!-- integrity: CDN 側でファイルが差し替えられたら読み込みを止める(SRI)。
        未対応ブラウザでは無視される。Leaflet の版を変えるときはハッシュも計算し直す -->
@@ -569,11 +571,11 @@
             <div class="info-collapse" id="infoAboutBody" hidden>
               <div class="info-row">
                 <span class="info-label" data-i18n="info.appName">アプリ名：</span>
-                <span class="info-value" data-i18n="info.appNameValue">箕面の森ハイキングマップ</span>
+                <span class="info-value" data-i18n="info.appNameValue">箕面-倒木報告</span>
               </div>
               <div class="info-row">
                 <span class="info-label" data-i18n="info.url">URL：</span>
-                <span class="info-value info-value-url">https://minoh-hiking.vercel.app/</span>
+                <span class="info-value info-value-url">https://sato4app.github.io/ft-report/</span>
               </div>
               <!-- ソースコード: このアプリのリポジトリへのリンク。URL と同じく「このアプリがどこにあるか」の
                    情報のため、クレジット(誰が何をしたか)ではなく URL の下に置く。
@@ -583,7 +585,7 @@
                    ないことを示す(アイコンもリンクに含めて押せるようにする) -->
               <div class="info-row">
                 <span class="info-label info-label-keep" data-i18n="info.sourceCode">ソースコード：</span>
-                <span class="info-value info-value-source">Open Source <span class="info-nowrap">(<a class="info-link" href="https://github.com/sato4app/minoh-hiking" target="_blank" rel="noopener" data-external-site="info.externalSiteGitHub">GitHub<svg class="icon-external" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>)</span></span>
+                <span class="info-value info-value-source">Open Source <span class="info-nowrap">(<a class="info-link" href="https://github.com/sato4app/ft-report" target="_blank" rel="noopener" data-external-site="info.externalSiteGitHub">GitHub<svg class="icon-external" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>)</span></span>
               </div>
               <!-- クレジット: 役割ごとの担当。
                    見出し(クレジット / Credits)と役割名は訳す(info.credits / info.credit*)。
