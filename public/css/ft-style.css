@@ -74,7 +74,7 @@
 }
 
 /* ===== 起動時画面の倒木報告のボタン(発見・案内・処理) =====
-   ボタンは ft-main.js の addHomeButtons で作る。見た目は既存のメニューのボタン(.home-btn)と同じ。
+   ボタンは ft-main.js の addHomeButtons で作る。形は既存のメニューのボタン(.home-btn)と同じで、色だけオレンジ。
    - 左寄せで縦に並べ、一番下(処理)の下端を画面の上から 4 割の高さに合わせる(bottom: 60%)。
      高さの基準は起動画像(style.css の .home-image の top: 50%)と同じ #viewHome の高さ。
    - 右側の既存のメニュー(.home-menu)は動かさない。
@@ -91,8 +91,16 @@
   pointer-events: auto;   /* #viewHome は pointer-events: none のため、ボタンを押せるように戻す */
 }
 
-/* .home-btn の max-width: 80% は外す。この列の幅はボタンの幅で決まるので、
-   残すといちばん広いボタンが列の 80% に縮み、文字がはみ出す */
+/* - .home-btn の max-width: 80% は外す。この列の幅はボタンの幅で決まるので、
+     残すといちばん広いボタンが列の 80% に縮み、文字がはみ出す
+   - 色はテーマ色(オレンジ)にする(既存のメニューのボタンは水色のまま)。白い文字を載せるので、
+     白との明るさの差を確保した --ft-theme-text を使う(.btn-primary と同じ) */
 .ft-home-btn {
   max-width: none;
+  color: #fff;
+  background: var(--ft-theme-text);
+}
+
+.ft-home-btn:hover {
+  background: var(--ft-theme-hover);
 }
