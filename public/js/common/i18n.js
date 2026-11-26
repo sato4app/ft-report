@@ -47,7 +47,7 @@ export function pickLang(entry) {
 // - 綴りはアメリカ式(color / centered / meters)。
 const DICT = {
   // ----- 共通 -----
-  'app.title': { ja: '箕面-倒木報告', en: 'Minoh Hiking' },
+  'app.title': { ja: '箕面倒木報告', en: 'Minoh Hiking' },
   'common.close': { ja: '閉じる', en: 'Close' },
   'common.back': { ja: '戻る', en: 'Back' },
   'common.cancel': { ja: 'キャンセル', en: 'Cancel' },
@@ -470,7 +470,7 @@ const DICT = {
   'info.noMessages': { ja: '履歴はありません。', en: 'No messages.' },
   'info.about': { ja: 'このアプリについて', en: 'About This App' },
   'info.appName': { ja: 'アプリ名：', en: 'App Name:' },
-  'info.appNameValue': { ja: '箕面-倒木報告', en: 'Minoh Forest Hiking Map' },
+  'info.appNameValue': { ja: '箕面倒木報告', en: 'Minoh Forest Hiking Map' },
   'info.url': { ja: 'URL：', en: 'URL:' },
   'info.sourceCode': { ja: 'ソースコード：', en: 'Source Code:' },
   // クレジット(役割ごとの担当)。担当は固有名詞を含むため訳さず、補足でその旨を断る
@@ -522,7 +522,7 @@ const DICT = {
   'guide.next': { ja: '次へ', en: 'Next' },
   'guide.finish': { ja: '終わり', en: 'Done' },
 
-  'guide.introTitle': { ja: '箕面-倒木報告の使い方', en: 'Using the Minoh Hiking Map' },
+  'guide.introTitle': { ja: '箕面倒木報告の使い方', en: 'Using the Minoh Hiking Map' },
   'guide.introBody': {
     ja: '箕面エリアの地図に、緊急ポイント・ハイキングルート・スポット・通行止め地点を重ねて表示し、' +
         '現在地の確認と、歩いた経路の記録ができます。\n' +

@@ -6,10 +6,11 @@
 import { showToast } from '../common/messages.js';
 import { checkAppShellUpdate } from '../data/update.js';
 import { checkPublishedDataUpdate } from '../data/published-data.js';
+import { openFoundReport } from './ft-found.js';
 
-// 起動時画面に足す、倒木報告のボタン(上から順に並べる)
+// 起動時画面に足す、倒木報告のボタン(上から順に並べる)。open は押したときに開く画面(無ければ準備中)
 const FT_HOME_BUTTONS = [
-  { id: 'ftBtnFind', label: '発見報告' },
+  { id: 'ftBtnFind', label: '発見報告', open: openFoundReport },   // docs/ft-funcspec-found.md
   { id: 'ftBtnGuide', label: '探索・案内' },
   { id: 'ftBtnProcess', label: '処理報告' }
 ];
@@ -29,7 +30,7 @@ function addHomeButtons() {
   nav.className = 'ft-home-menu';
   nav.setAttribute('aria-label', '倒木報告メニュー');
 
-  for (const { id, label } of FT_HOME_BUTTONS) {
+  for (const { id, label, open } of FT_HOME_BUTTONS) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.id = id;
@@ -40,8 +41,8 @@ function addHomeButtons() {
       // (app.js の checkForUpdates と同じ処理。app.js を書き換えないよう、ここで呼ぶ)
       checkAppShellUpdate();
       checkPublishedDataUpdate();
-      // 各機能はまだ作っていない
-      showToast(`「${label}」は準備中です`);
+      if (open) open();
+      else showToast(`「${label}」は準備中です`);   // まだ作っていない機能
     });
     nav.appendChild(btn);
   }
