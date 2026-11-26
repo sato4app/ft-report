@@ -16,6 +16,11 @@
   --ft-theme-hover: #9a3412;
   --ft-theme-tint: #fff1e6;   /* 薄い背景(開いた項目の見出し) */
   --ft-theme-track: #fbd9bf;  /* 処理中の回転表示の下地 */
+  /* 明るいオレンジのボタン(起動時画面の倒木報告のボタン)。白い文字は読みにくいので、文字は黒に近い色にする
+     (背景とのコントラスト比: 通常 8.1、指したとき 7.3) */
+  --ft-bright: #ff9800;
+  --ft-bright-hover: #fb8c00;
+  --ft-bright-text: #1a1a1a;
 }
 
 /* 使い方ガイドの吹き出しの見出し */
@@ -74,7 +79,7 @@
 }
 
 /* ===== 起動時画面の倒木報告のボタン(発見・案内・処理) =====
-   ボタンは ft-main.js の addHomeButtons で作る。形は既存のメニューのボタン(.home-btn)と同じで、色だけオレンジ。
+   ボタンは ft-main.js の addHomeButtons で作る。形は既存のメニューのボタン(.home-btn)と同じで、色だけ明るいオレンジ。
    - 左寄せで縦に並べ、一番下(処理)の下端を画面の上から 4 割の高さに合わせる(bottom: 60%)。
      高さの基準は起動画像(style.css の .home-image の top: 50%)と同じ #viewHome の高さ。
    - 右側の既存のメニュー(.home-menu)は動かさない。
@@ -93,14 +98,13 @@
 
 /* - .home-btn の max-width: 80% は外す。この列の幅はボタンの幅で決まるので、
      残すといちばん広いボタンが列の 80% に縮み、文字がはみ出す
-   - 色はテーマ色(オレンジ)にする(既存のメニューのボタンは水色のまま)。白い文字を載せるので、
-     白との明るさの差を確保した --ft-theme-text を使う(.btn-primary と同じ) */
+   - 色は明るいオレンジにする(既存のメニューのボタンは水色のまま)。色は先頭の変数 --ft-bright など */
 .ft-home-btn {
   max-width: none;
-  color: #fff;
-  background: var(--ft-theme-text);
+  color: var(--ft-bright-text);
+  background: var(--ft-bright);
 }
 
 .ft-home-btn:hover {
-  background: var(--ft-theme-hover);
+  background: var(--ft-bright-hover);
 }
