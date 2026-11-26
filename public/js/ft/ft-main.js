@@ -9,9 +9,9 @@ import { checkPublishedDataUpdate } from '../data/published-data.js';
 
 // 起動時画面に足す、倒木報告のボタン(上から順に並べる)
 const FT_HOME_BUTTONS = [
-  { id: 'ftBtnFind', label: '発見' },
-  { id: 'ftBtnGuide', label: '案内' },
-  { id: 'ftBtnProcess', label: '処理' }
+  { id: 'ftBtnFind', label: '発見報告' },
+  { id: 'ftBtnGuide', label: '探索・案内' },
+  { id: 'ftBtnProcess', label: '処理報告' }
 ];
 
 // ft-report の初期化
