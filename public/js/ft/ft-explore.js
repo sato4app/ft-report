@@ -2,7 +2,7 @@
 // 起動時画面の「探索・案内」から openExplore() で開く。ハイキングマップ画面に、次のものを重ねて出す。
 // - 写真の一覧(左上)。写真を押すと案内を始め、一覧はたたんでバーにする(バーを押すと広げる)
 // - 写真の撮影地点の番号の印(一覧に載っている写真のカメラの印は隠す)
-// - 現在地から撮影地点への矢印と、方角・距離(左下)。約 30m 以内に入ったら「近くに着きました」と知らせる
+// - 現在地から撮影地点への矢印と、方角・距離(左上のバーのすぐ下)。約 30m 以内に入ったら「近くに着きました」と知らせる
 // minoh-hiking 由来のファイル(geolocation.js・photos.js・index.html など)は変えない。
 // - 地図画面へは、起動時画面の「ハイキングマップ表示」のボタンを押す形で切り替える(app.js の showView は外から呼べないため)
 // - 現在地は、「現在地点をマーカー表示」(#toggleCurrentMarker)がオンのときだけ、ここで監視する
@@ -161,10 +161,11 @@ function buildDom() {
       <ol class="ft-explore-list"></ol>
       <p class="ft-explore-empty" hidden>写真がありません</p>
     </section>
-    <button type="button" class="ft-explore-bar" aria-expanded="false" hidden></button>
-    <div class="ft-explore-info" role="status" aria-live="polite" hidden>
-      <div class="ft-explore-info-name"></div>
-      <div class="ft-explore-info-text"></div>
+    <div class="ft-explore-stack" hidden>
+      <button type="button" class="ft-explore-bar" aria-expanded="false"></button>
+      <div class="ft-explore-info" role="status" aria-live="polite" hidden>
+        <div class="ft-explore-info-text"></div>
+      </div>
     </div>`;
   ex.viewMap.appendChild(root);
   ex.el = {
@@ -172,9 +173,9 @@ function buildDom() {
     panel: root.querySelector('.ft-explore-panel'),
     list: root.querySelector('.ft-explore-list'),
     empty: root.querySelector('.ft-explore-empty'),
+    stack: root.querySelector('.ft-explore-stack'),
     bar: root.querySelector('.ft-explore-bar'),
     info: root.querySelector('.ft-explore-info'),
-    infoName: root.querySelector('.ft-explore-info-name'),
     infoText: root.querySelector('.ft-explore-info-text'),
     defs: buildArrowHeadDefs()
   };
@@ -241,13 +242,14 @@ function renderList() {
   list.hidden = ex.items.length === 0;
 }
 
-// 一覧をたたむ・広げる。たたんだときは、案内している写真の番号と名前をバーに出す
+// 一覧をたたむ・広げる。たたんだときは、案内している写真の番号と名前をバーに出し、
+// そのすぐ下に方角と距離を出す(一覧を広げている間は、どちらも出さない。矢印は出し続ける)
 function setCollapsed(collapsed) {
   const target = findItem(ex.targetId);
   ex.collapsed = collapsed && !!target;
   if (!ex.collapsed) renderList();
   ex.el.panel.hidden = ex.collapsed;
-  ex.el.bar.hidden = !ex.collapsed;
+  ex.el.stack.hidden = !ex.collapsed;
   ex.el.bar.setAttribute('aria-expanded', String(!ex.collapsed));
   if (ex.collapsed) {
     ex.el.bar.textContent = `${itemLabel(target)} ▼`;
@@ -358,10 +360,10 @@ function selectTarget(id) {
   renderGuide();
 }
 
-// 方角と距離(左下)と矢印を、今の状態に合わせて出し直す
+// 方角と距離(左上のバーのすぐ下)と矢印を、今の状態に合わせて出し直す
 function renderGuide() {
   if (!ex) return;
-  const { info, infoName, infoText } = ex.el;
+  const { info, infoText } = ex.el;
   const target = findItem(ex.targetId);
   if (!target) {
     info.hidden = true;
@@ -369,7 +371,6 @@ function renderGuide() {
     return;
   }
   info.hidden = false;
-  infoName.textContent = itemLabel(target);
 
   let text = '';
   if (!ex.toggle?.checked) text = MSG_MARKER_OFF;
