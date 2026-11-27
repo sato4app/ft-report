@@ -272,22 +272,23 @@
   gap: 0.4rem;
 }
 
-/* 天気・気温の行: 天気・気温の欄は狭くし、右に「天気・気温を調べる」を置く。
-   ボタンの幅は行の半分まで(画面が広いときに広がりすぎないように)。右端はほかの入力欄の右端にそろえる。
+/* 天気・気温の行: 右に「天気・気温を調べる」を置く。
+   ボタンの幅は行の半分まで(画面が広いときに広がりすぎないように)。残りの幅を天気・気温の欄で分け合う
+   (欄の幅は 4.8rem より狭くしない。画面が狭いときはボタンの方を狭くし、文字を 2 行に折り返す)。
    ボタンの下端を入力欄の下端にそろえる。ボタンは控えめな灰色(.btn-secondary) */
 .ft-weather-row {
   align-items: flex-end;
 }
 
 .ft-weather-row > .ft-field {
-  flex: 0 0 4.8rem;
+  flex: 1 1 0;
+  min-width: 4.8rem;
 }
 
 .ft-weather-tool {
   display: flex;
   flex: 0 1 50%;
   min-width: 0;
-  margin-left: auto;
 }
 
 .ft-weather-tool[hidden] {
