@@ -185,6 +185,23 @@ export function distanceMeters(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+// 地点 1 から見た地点 2 の方角(度。北が 0、東が 90)
+export function bearingDegrees(lat1, lng1, lat2, lng2) {
+  const toRad = Math.PI / 180;
+  const p1 = lat1 * toRad;
+  const p2 = lat2 * toRad;
+  const dLng = (lng2 - lng1) * toRad;
+  const y = Math.sin(dLng) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dLng);
+  return (Math.atan2(y, x) / toRad + 360) % 360;
+}
+
+// 方角(度)を 8 方位の名前にする
+const DIRECTIONS_8 = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+export function directionName8(degrees) {
+  return DIRECTIONS_8[Math.round(degrees / 45) % 8];
+}
+
 // 最も近い緊急ポイントと距離(m)。maxMeters より遠いものしか無ければ null
 export function findNearestPoint(points, lat, lng, maxMeters = 1000) {
   let best = null;

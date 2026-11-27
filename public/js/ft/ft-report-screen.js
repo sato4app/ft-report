@@ -20,7 +20,8 @@ import { downloadBlob } from '../common/file-export.js';
 import { errorText } from '../common/utils.js';
 import {
   FT_REPORT_MAX_PHOTOS, circledNumber, buildDateRange, formatPhotoTime, todayInputDate,
-  defaultCaption, buildReport, defaultReportFileName, sanitizeFileName, loadMapFeatures, findNearestPoint
+  defaultCaption, buildReport, defaultReportFileName, sanitizeFileName, loadMapFeatures, findNearestPoint,
+  bearingDegrees, directionName8
 } from './ft-report-data.js';
 import { FT_MAP_WARN_ZOOM } from './ft-report-map.js';
 import { estimateReportMapZoom, buildReportPdf } from './ft-report-layout.js';
@@ -489,7 +490,11 @@ function renderPlaceRef(photos) {
       const near = findNearestPoint(features.points, photo.lat, photo.lng, 1000);
       if (near) {
         const m = near.meters < 100 ? Math.round(near.meters) : Math.round(near.meters / 10) * 10;
-        li.textContent = `${circledNumber(i + 1)} ${near.point.id} ${near.point.name}（約 ${m}m）`;
+        // 方角は、緊急ポイントから見た写真の撮影地点の向き(8 方位)。0m のときは向きが決まらないので出さない
+        const dir = m > 0
+          ? `${directionName8(bearingDegrees(near.point.lat, near.point.lng, photo.lat, photo.lng))}方向に`
+          : '';
+        li.textContent = `${circledNumber(i + 1)} ${near.point.id} ${near.point.name}（${dir}約 ${m}m）`;
       } else {
         li.textContent = `${circledNumber(i + 1)} 近くに緊急ポイントなし`;
       }
