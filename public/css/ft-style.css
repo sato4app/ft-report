@@ -78,11 +78,11 @@
   background: var(--ft-theme-hover);
 }
 
-/* ===== 起動時画面の倒木報告のボタン(発見報告・探索・案内・処理報告・項目設定) =====
+/* ===== 起動時画面の倒木報告のボタン(発見報告・探索・案内・処理報告・設定) =====
    ボタンは ft-main.js の addHomeButtons で作る。形は既存のメニューのボタン(.home-btn)と同じで、色だけ明るいオレンジ。
    - 左寄せで縦に並べ、処理報告の下端を画面の上から 4 割の高さに合わせる(bottom: 60%)。
      高さの基準は起動画像(style.css の .home-image の top: 50%)と同じ #viewHome の高さ。
-   - 項目設定は処理報告の下に置く(.ft-home-btn-below。列の外に出し、処理報告の位置を動かさない)。
+   - 設定(項目設定)は処理報告の下に置く(.ft-home-btn-below。列の外に出し、処理報告の位置を動かさない)。
    - 右側の既存のメニュー(.home-menu)は動かさない。
    - ボタンの幅は、いちばん広いものにそろえる(align-items: stretch)。 */
 .ft-home-menu {
@@ -110,13 +110,13 @@
   background: var(--ft-bright-hover);
 }
 
-/* 処理報告の下に置くボタン(項目設定)。列の流れから外して列のすぐ下に置くので、列の下端(処理報告)は
-   画面の上から 4 割のまま。幅は列(いちばん広いボタン)と同じにする */
+/* 処理報告の下に置くボタン(設定。項目設定を開く)。列の流れから外して列のすぐ下に置くので、列の下端(処理報告)は
+   画面の上から 4 割のまま。幅は文字に合わせて狭くし、ボタンは列の左端にそろえる(ラベルはボタンの中で中揃え) */
 .ft-home-btn-below {
   position: absolute;
   top: calc(100% + 0.6rem);
   left: 0;
-  right: 0;
+  width: max-content;
 }
 
 /* ===== 発見報告(ft-found.js。仕様は docs/ft-funcspec-found.md) =====
@@ -269,6 +269,30 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+/* 天気・気温を調べる(天気・気温の欄の下)。ボタンは控えめな灰色(.btn-secondary)で、高さを少し低くする */
+.ft-weather-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: -0.2rem;
+}
+
+.ft-weather-tool[hidden] {
+  display: none;
+}
+
+.ft-weather-btn {
+  min-height: 40px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+.ft-weather-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6b7280;
 }
 
 .ft-caption-row {

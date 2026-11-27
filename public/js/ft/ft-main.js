@@ -15,7 +15,7 @@ const FT_HOME_BUTTONS = [
   { id: 'ftBtnFind', label: '発見報告', open: openFoundReport },   // docs/ft-funcspec-found.md
   { id: 'ftBtnGuide', label: '探索・案内' },
   { id: 'ftBtnProcess', label: '処理報告' },
-  { id: 'ftBtnItems', label: '項目設定', open: openItemSettings, below: true }   // docs/ft-funcspec-items.md
+  { id: 'ftBtnItems', label: '設定', open: openItemSettings, below: true }   // 項目設定。docs/ft-funcspec-items.md
 ];
 
 // ft-report の初期化

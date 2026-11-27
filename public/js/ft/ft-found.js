@@ -6,6 +6,7 @@
 //   入力しない項目は入力の画面に出さず、報告書では空欄にする。
 // - 出力したあとも入力の画面は開いたまま(直してもう一度出力できる)。
 // - 写真は変えない・消さない。
+// - 「天気・気温を調べる」で、最初の写真の撮影時刻の箕面大滝付近の天気・気温を Open-Meteo から取って入れる(ft-weather.js)。
 // - 背景(画面の外側)を押しても閉じない(入力した内容をうっかり失わないため)。閉じるのは「×」「閉じる」だけ。
 import { getPhotos, getPhoto, getPhotoThumbUrl } from '../photo/photos.js';
 import { blurActiveElement } from '../common/ui.js';
@@ -19,6 +20,7 @@ import {
 import { FT_MAP_WARN_ZOOM } from './ft-report-map.js';
 import { estimateReportMapZoom, buildReportPdf } from './ft-report-layout.js';
 import { REPORT_ITEMS, hasCandidates, loadItemSettings } from './ft-report-items.js';
+import { fetchMinohWeather, WEATHER_SOURCE } from './ft-weather.js';
 
 // 開いている間の状態(閉じたら null)
 let state = null;
@@ -40,7 +42,8 @@ export function openFoundReport() {
     featuresPromise: null,
     observer: null,
     pdf: null,             // 作った PDF と、そのときの報告書の中身
-    busy: false
+    busy: false,
+    weatherBusy: false     // 天気・気温を調べている間
   };
   state.featuresPromise = loadMapFeatures();
   buildDom();
@@ -101,6 +104,11 @@ function buildDom() {
               <input type="number" id="ftfTemperature" step="any" />
             </div>
           </div>
+          <!-- 天気・気温を調べる(ft-weather.js)。天気・気温の両方を入力しないときは出さない -->
+          <div class="ft-weather-tool" data-ft-weather-tool>
+            <button type="button" class="btn btn-secondary ft-weather-btn" data-ft-weather>天気・気温を調べる</button>
+            <p class="ft-weather-note" data-ft-weather-note></p>
+          </div>
           <div class="ft-field" data-ft-item="writer">
             <label for="ftfWriter">記入者</label>
             <input type="text" id="ftfWriter" autocomplete="off" />
@@ -119,7 +127,7 @@ function buildDom() {
           </div>
           <div class="ft-field" data-ft-item="reportTo">
             <label for="ftfReportTo">通報先</label>
-            <input type="text" id="ftfReportTo" autocomplete="off" placeholder="例: 山パト/浦上" />
+            <input type="text" id="ftfReportTo" autocomplete="off" />
           </div>
           <div class="ft-field-row">
             <div class="ft-field" data-ft-item="reportMeans">
@@ -240,6 +248,9 @@ function buildDom() {
     body: q('#ftfBody'),
     notes: q('#ftfNotes'),
     none: q('[data-ft-none]'),
+    weatherTool: q('[data-ft-weather-tool]'),
+    weatherBtn: q('[data-ft-weather]'),
+    weatherNote: q('[data-ft-weather-note]'),
     fileName: exportModal.querySelector('#ftFoundFileName'),
     exportNote: exportModal.querySelector('[data-ft-export-note]'),
     share: exportModal.querySelector('[data-ft-share]'),
@@ -253,6 +264,7 @@ function buildDom() {
     else if (t.hasAttribute('data-ft-next')) showInputStep();
     else if (t.hasAttribute('data-ft-back')) showStep('select');
     else if (t.hasAttribute('data-ft-output')) startOutput();
+    else if (t.hasAttribute('data-ft-weather')) lookupWeather();
   });
   exportModal.addEventListener('click', (e) => {
     const t = e.target.closest('[data-ft-export-cancel], [data-ft-share], [data-ft-save]');
@@ -295,6 +307,8 @@ function applySettings() {
   for (const row of el.modal.querySelectorAll('.ft-field-row')) {
     row.hidden = [...row.children].every((c) => c.hidden);
   }
+  // 天気・気温を調べるボタンは、天気か気温のどちらかを入力するときだけ出す
+  el.weatherTool.hidden = !settings.weather.enabled && !settings.temperature.enabled;
   el.none.hidden = REPORT_ITEMS.some((item) => settings[item.key].enabled);
 }
 
@@ -401,9 +415,10 @@ function showInputStep() {
   const { el } = state;
   // 写真を選び直したら、日時の欄を作り直す(手で書き換えていても入れ直す。仕様 4.3)
   const key = [...state.selected].sort().join(',');
-  if (key !== state.dateKey && isEnabled('date')) {
-    el.date.value = buildDateRange(photos);
+  if (key !== state.dateKey) {
+    if (isEnabled('date')) el.date.value = buildDateRange(photos);
     state.dateKey = key;
+    resetWeatherTool(photos);
   }
   if (isEnabled('captions')) renderCaptions(photos);
   if (isEnabled('place')) renderPlaceRef(photos);
@@ -457,6 +472,51 @@ function renderPlaceRef(photos) {
     });
     el.ref.hidden = false;
   });
+}
+
+// ===== 天気・気温を調べる(仕様 4.6) =====
+// 調べる時刻は、選んだ写真のうち撮影日時が分かるものの最も早い時刻(日時の欄の始まりと同じ)
+function weatherTime(photos) {
+  const times = photos.map((p) => p.timeMs).filter((t) => Number.isFinite(t));
+  return times.length > 0 ? Math.min(...times) : null;
+}
+
+// 写真を選び直したとき: ボタンと説明を、選んだ写真に合わせて出し直す
+function resetWeatherTool(photos) {
+  const { el } = state;
+  const t = weatherTime(photos);
+  el.weatherBtn.disabled = t === null;
+  el.weatherNote.textContent = t === null
+    ? '撮影日時が分かる写真が無いため、調べられません。'
+    : `${formatPhotoTime(t)} の、箕面大滝付近の天気と気温を入れます（Open-Meteo.com の気象モデルの推定値。インターネットにつながっているときだけ）。`;
+}
+
+async function lookupWeather() {
+  if (!state || state.weatherBusy) return;
+  const { el } = state;
+  const t = weatherTime(selectedPhotos());
+  if (t === null) return;
+  state.weatherBusy = true;
+  el.weatherBtn.disabled = true;
+  el.weatherBtn.textContent = '調べています…';
+  try {
+    const result = await fetchMinohWeather(t);
+    if (!state || state.el !== el) return;
+    if (isEnabled('weather') && result.weather) el.weather.value = result.weather;
+    if (isEnabled('temperature') && result.temperature !== null) el.temperature.value = String(result.temperature);
+    const [, m, d, h] = result.hour.match(/^\d{4}-(\d{2})-(\d{2})T(\d{2})/) || [];
+    el.weatherNote.textContent = `${m}/${d} ${Number(h)}時台の値を入れました（直してかまいません）。${WEATHER_SOURCE}`;
+  } catch (err) {
+    // 圏外などで通信できないときは TypeError(英語の文)になるので、日本語に直して出す
+    const reason = err instanceof TypeError ? '通信できません' : errorText(err);
+    showToast(`天気・気温を取得できませんでした（${reason}）`, { durationSec: 5 });
+  } finally {
+    if (state && state.el === el) {
+      state.weatherBusy = false;
+      el.weatherBtn.disabled = false;
+      el.weatherBtn.textContent = '天気・気温を調べる';
+    }
+  }
 }
 
 function checkedValue(name) {

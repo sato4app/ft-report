@@ -48,7 +48,7 @@ minoh-hiking と同じ 2 段階で配信する。
 | `public/icons/ft-startup-1024x1834.webp` | 起動時画面の画像（「箕面の森 倒木報告」の文字入り） |
 | `assets/ft-startup-20261126-v3.odg` | 起動時画面の画像の元データ（LibreOffice Draw）。`-v1`・`-v2` は前の版。公開しない（`public/` の外） |
 | `assets/ft-startup-1024x1835.png` | 起動時画面の画像の絵の部分。公開しない |
-| `public/js/ft/ft-main.js` | ft-report だけの処理の入口（`initFt()`）。起動時画面の倒木報告のボタン（発見報告・探索・案内・処理報告・項目設定）を作る。「探索・案内」「処理報告」はまだ作っておらず、押すと「準備中です」と出る |
+| `public/js/ft/ft-main.js` | ft-report だけの処理の入口（`initFt()`）。起動時画面の倒木報告のボタン（発見報告・探索・案内・処理報告と、項目設定を開く「設定」）を作る。「探索・案内」「処理報告」はまだ作っておらず、押すと「準備中です」と出る |
 | `public/js/ft/ft-found.js` | 発見報告の画面（写真の選択・入力・出力） |
 | `public/js/ft/ft-report-data.js` | 報告書の中身の組み立て（PDF・Excel で共通）と、地図データ（緊急ポイント・ルート）の読み込み |
 | `public/js/ft/ft-report-layout.js` | 報告書の様式の配置と PDF の作成 |
@@ -56,6 +56,7 @@ minoh-hiking と同じ 2 段階で配信する。
 | `public/js/ft/ft-pdf.js` | PDF の組み立て（ライブラリを使わない） |
 | `public/js/ft/ft-report-items.js` | 報告の記入項目の一覧と、項目設定の読み書き（発見報告・処理報告で共通） |
 | `public/js/ft/ft-item-settings.js` | 項目設定の画面 |
+| `public/js/ft/ft-weather.js` | 発見報告の「天気・気温を調べる」（箕面大滝付近の天気・気温を Open-Meteo から取る） |
 | `public/css/ft-style.css` | ft-report だけのスタイル。style.css のテーマ色（緑）をオレンジに上書きする。起動時画面の倒木報告のボタンなど、ft-report で足す画面部品のスタイルもここに置く |
 | `.gitattributes` | 取り込みのとき README.md・CLAUDE.md は ft-report 側を残す（`merge=ours`） |
 | `docs/ft-overview.md` | この文書 |
