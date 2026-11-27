@@ -78,10 +78,11 @@
   background: var(--ft-theme-hover);
 }
 
-/* ===== 起動時画面の倒木報告のボタン(発見報告・探索・案内・処理報告) =====
+/* ===== 起動時画面の倒木報告のボタン(発見報告・探索・案内・処理報告・項目設定) =====
    ボタンは ft-main.js の addHomeButtons で作る。形は既存のメニューのボタン(.home-btn)と同じで、色だけ明るいオレンジ。
-   - 左寄せで縦に並べ、一番下(処理報告)の下端を画面の上から 4 割の高さに合わせる(bottom: 60%)。
+   - 左寄せで縦に並べ、処理報告の下端を画面の上から 4 割の高さに合わせる(bottom: 60%)。
      高さの基準は起動画像(style.css の .home-image の top: 50%)と同じ #viewHome の高さ。
+   - 項目設定は処理報告の下に置く(.ft-home-btn-below。列の外に出し、処理報告の位置を動かさない)。
    - 右側の既存のメニュー(.home-menu)は動かさない。
    - ボタンの幅は、いちばん広いものにそろえる(align-items: stretch)。 */
 .ft-home-menu {
@@ -107,6 +108,15 @@
 
 .ft-home-btn:hover {
   background: var(--ft-bright-hover);
+}
+
+/* 処理報告の下に置くボタン(項目設定)。列の流れから外して列のすぐ下に置くので、列の下端(処理報告)は
+   画面の上から 4 割のまま。幅は列(いちばん広いボタン)と同じにする */
+.ft-home-btn-below {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 0;
+  right: 0;
 }
 
 /* ===== 発見報告(ft-found.js。仕様は docs/ft-funcspec-found.md) =====
@@ -333,5 +343,145 @@
 }
 
 .ft-found-export-cancel {
+  padding-top: 0;
+}
+
+/* 項目設定で「入力しない」にした欄は隠す(.ft-field などは display を指定しているため、hidden を明示する) */
+.ft-field[hidden],
+.ft-field-row[hidden],
+.ft-choice[hidden],
+.ft-found-none[hidden] {
+  display: none;
+}
+
+.ft-found-none {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* ===== 項目設定(ft-item-settings.js。仕様は docs/ft-funcspec-items.md) ===== */
+/* 報告の種類(発見報告・処理報告)の切り替え */
+.ft-tabs {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem 0.6rem;
+}
+
+.ft-tab {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ft-theme-text);
+  background: #fff;
+  border: 2px solid var(--ft-theme);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ft-tab.is-active {
+  color: #fff;
+  background: var(--ft-theme-text);
+  border-color: var(--ft-theme-text);
+}
+
+.ft-items-note {
+  padding-bottom: 0.6rem;
+}
+
+.ft-items-note[hidden] {
+  display: none;
+}
+
+/* 項目ごとの枠: 上に「入力する」のチェックと項目名、下に初期値・候補 */
+.ft-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0 1rem;
+}
+
+.ft-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ft-item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+}
+
+.ft-item-head input {
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin: 0;
+  accent-color: var(--ft-theme);
+}
+
+.ft-item-name {
+  flex: 1 1 auto;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111;
+}
+
+.ft-item-state {
+  flex: none;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.ft-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.7rem;
+}
+
+.ft-item-body:empty {
+  display: none;
+}
+
+/* 「入力する」を外した項目は、項目名を薄くし、初期値・候補の欄を閉じる */
+.ft-item.is-off {
+  background: #f9fafb;
+}
+
+.ft-item.is-off .ft-item-name {
+  color: #9ca3af;
+}
+
+.ft-item.is-off .ft-item-body {
+  display: none;
+}
+
+.ft-item-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.ft-field select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  font: inherit;
+  font-size: 1rem;
+  color: #111;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.ft-items-reset {
   padding-top: 0;
 }

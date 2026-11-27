@@ -7,12 +7,15 @@ import { showToast } from '../common/messages.js';
 import { checkAppShellUpdate } from '../data/update.js';
 import { checkPublishedDataUpdate } from '../data/published-data.js';
 import { openFoundReport } from './ft-found.js';
+import { openItemSettings } from './ft-item-settings.js';
 
-// 起動時画面に足す、倒木報告のボタン(上から順に並べる)。open は押したときに開く画面(無ければ準備中)
+// 起動時画面に足す、倒木報告のボタン(上から順に並べる)。open は押したときに開く画面(無ければ準備中)。
+// below の付いたボタンは、列の下端(処理報告の下端。画面の上から 4 割)より下に置く(ft-style.css の .ft-home-btn-below)
 const FT_HOME_BUTTONS = [
   { id: 'ftBtnFind', label: '発見報告', open: openFoundReport },   // docs/ft-funcspec-found.md
   { id: 'ftBtnGuide', label: '探索・案内' },
-  { id: 'ftBtnProcess', label: '処理報告' }
+  { id: 'ftBtnProcess', label: '処理報告' },
+  { id: 'ftBtnItems', label: '項目設定', open: openItemSettings, below: true }   // docs/ft-funcspec-items.md
 ];
 
 // ft-report の初期化
@@ -30,11 +33,12 @@ function addHomeButtons() {
   nav.className = 'ft-home-menu';
   nav.setAttribute('aria-label', '倒木報告メニュー');
 
-  for (const { id, label, open } of FT_HOME_BUTTONS) {
+  for (const { id, label, open, below } of FT_HOME_BUTTONS) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.id = id;
     btn.className = 'home-btn ft-home-btn';   // 見た目は既存のメニューのボタン(.home-btn)と同じ
+    if (below) btn.classList.add('ft-home-btn-below');
     btn.textContent = label;
     btn.addEventListener('click', () => {
       // 既存のメニューのボタンと同じく、あわせてアプリと公開データの更新版を確認する

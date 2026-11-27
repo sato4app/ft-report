@@ -1,26 +1,24 @@
 // 発見報告(仕様 docs/ft-funcspec-found.md)。
 // 起動時画面の「発見報告」から開く。① 写真の選択 →「次へ」→ ② 入力 →「出力」→ ③ ファイル名の確認 → 共有・保存。
 // - 画面(モーダル)はここで作る(index.html は書き換えない)。開くたびに作り、閉じたら取り除く。
-// - 報告書と入力した内容は保存しない。閉じると消える。記入者・通報先・通報手段だけを、次の初期値として覚える。
+// - 報告書と入力した内容は保存しない。閉じると消える。
+// - 入力する項目・初期値・候補は、項目設定(ft-item-settings.js。設定の読み書きは ft-report-items.js)に従う。
+//   入力しない項目は入力の画面に出さず、報告書では空欄にする。
 // - 出力したあとも入力の画面は開いたまま(直してもう一度出力できる)。
 // - 写真は変えない・消さない。
 // - 背景(画面の外側)を押しても閉じない(入力した内容をうっかり失わないため)。閉じるのは「×」「閉じる」だけ。
 import { getPhotos, getPhoto, getPhotoThumbUrl } from '../photo/photos.js';
 import { blurActiveElement } from '../common/ui.js';
 import { showToast } from '../common/messages.js';
-import { readLocalJSON, writeLocalJSON } from '../common/storage.js';
 import { downloadBlob } from '../common/file-export.js';
-import { escapeHtml, errorText } from '../common/utils.js';
+import { errorText } from '../common/utils.js';
 import {
   FT_REPORT_MAX_PHOTOS, circledNumber, buildDateRange, formatPhotoTime, todayInputDate,
   defaultCaption, buildReport, defaultReportFileName, sanitizeFileName, loadMapFeatures, findNearestPoint
 } from './ft-report-data.js';
 import { FT_MAP_WARN_ZOOM } from './ft-report-map.js';
 import { estimateReportMapZoom, buildReportPdf } from './ft-report-layout.js';
-
-// 次の初期値として覚える項目(仕様 4.2)
-const LAST_INPUTS_KEY = 'ft-report.found.lastInputs';
-const REMEMBERED_FIELDS = ['writer', 'reportTo', 'reportMeans'];
+import { REPORT_ITEMS, hasCandidates, loadItemSettings } from './ft-report-items.js';
 
 // 開いている間の状態(閉じたら null)
 let state = null;
@@ -34,6 +32,7 @@ export function openFoundReport() {
   }
   state = {
     el: null,
+    settings: loadItemSettings('found'),   // 項目設定(入力する項目・初期値・候補)
     selected: [],          // 選んだ写真の id(選んだ順)
     captions: new Map(),   // 写真の id → 見出し(選び直しても残す)
     dateKey: null,         // 日時の欄を作ったときの写真の組
@@ -59,9 +58,6 @@ function closeFoundReport() {
 
 // ===== 画面を作る =====
 function buildDom() {
-  const last = readLocalJSON(LAST_INPUTS_KEY) || {};
-  const v = (key) => escapeHtml(String(last[key] ?? ''));
-
   const modal = document.createElement('div');
   modal.className = 'modal ft-found-modal';
   modal.id = 'ftFoundModal';
@@ -88,33 +84,32 @@ function buildDom() {
 
       <div class="modal-body" data-step="input" hidden>
         <p class="ft-found-warn" data-ft-warn hidden>写真の範囲が広いため、地図の縮尺が小さくなります。地図は 1 枚なので、必要なら報告を分けてください。</p>
+        <!-- 各欄の data-ft-item は項目設定の項目(ft-report-items.js の REPORT_ITEMS の key)。
+             入力しない項目の欄は隠し、初期値と候補は applySettings で入れる -->
         <div class="ft-form">
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="date">
             <label for="ftfDate">日時</label>
             <input type="text" id="ftfDate" autocomplete="off" />
           </div>
           <div class="ft-field-row">
-            <div class="ft-field">
+            <div class="ft-field" data-ft-item="weather">
               <label for="ftfWeather">天気</label>
-              <input type="text" id="ftfWeather" list="ftfWeatherList" autocomplete="off" />
+              <input type="text" id="ftfWeather" autocomplete="off" />
             </div>
-            <div class="ft-field">
+            <div class="ft-field" data-ft-item="temperature">
               <label for="ftfTemperature">気温（℃）</label>
               <input type="number" id="ftfTemperature" step="any" />
             </div>
           </div>
-          <datalist id="ftfWeatherList">
-            <option value="晴"></option><option value="曇"></option><option value="雨"></option><option value="雪"></option>
-          </datalist>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="writer">
             <label for="ftfWriter">記入者</label>
-            <input type="text" id="ftfWriter" autocomplete="off" value="${v('writer')}" />
+            <input type="text" id="ftfWriter" autocomplete="off" />
           </div>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="subject">
             <label for="ftfSubject">対象案件</label>
             <input type="text" id="ftfSubject" autocomplete="off" />
           </div>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="place">
             <label for="ftfPlace">場所</label>
             <input type="text" id="ftfPlace" autocomplete="off" />
             <div class="ft-found-ref" data-ft-ref hidden>
@@ -122,51 +117,49 @@ function buildDom() {
               <ul data-ft-ref-list></ul>
             </div>
           </div>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="reportTo">
             <label for="ftfReportTo">通報先</label>
-            <input type="text" id="ftfReportTo" autocomplete="off" placeholder="例: 山パト/浦上" value="${v('reportTo')}" />
+            <input type="text" id="ftfReportTo" autocomplete="off" placeholder="例: 山パト/浦上" />
           </div>
           <div class="ft-field-row">
-            <div class="ft-field">
+            <div class="ft-field" data-ft-item="reportMeans">
               <label for="ftfReportMeans">通報手段</label>
-              <input type="text" id="ftfReportMeans" list="ftfReportMeansList" autocomplete="off" value="${v('reportMeans')}" />
+              <input type="text" id="ftfReportMeans" autocomplete="off" />
             </div>
-            <div class="ft-field">
+            <div class="ft-field" data-ft-item="reportDate">
               <label for="ftfReportDate">通報日時</label>
               <input type="date" id="ftfReportDate" value="${todayInputDate()}" />
             </div>
           </div>
-          <datalist id="ftfReportMeansList">
-            <option value="メール"></option><option value="電話"></option><option value="LINE"></option>
-          </datalist>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="participants">
             <label for="ftfParticipants">参加者</label>
             <input type="text" id="ftfParticipants" autocomplete="off" />
           </div>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="body">
             <label for="ftfBody">活動内容</label>
             <textarea id="ftfBody" rows="4"></textarea>
           </div>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="captions">
             <span class="ft-field-title">写真の見出し</span>
             <div class="ft-caption-list" data-ft-captions></div>
           </div>
-          <fieldset class="ft-choice">
+          <fieldset class="ft-choice" data-ft-item="contactReportTo">
             <legend>通報先へ連絡</legend>
             <label><input type="radio" name="ftfContactReportTo" value="要" />要</label>
             <label><input type="radio" name="ftfContactReportTo" value="不要" />不要</label>
             <label><input type="radio" name="ftfContactReportTo" value="" checked />未選択</label>
           </fieldset>
-          <fieldset class="ft-choice">
+          <fieldset class="ft-choice" data-ft-item="contactGov">
             <legend>行政への連絡</legend>
             <label><input type="radio" name="ftfContactGov" value="要" />要</label>
             <label><input type="radio" name="ftfContactGov" value="不要" />不要</label>
             <label><input type="radio" name="ftfContactGov" value="" checked />未選択</label>
           </fieldset>
-          <div class="ft-field">
+          <div class="ft-field" data-ft-item="notes">
             <label for="ftfNotes">連絡事項</label>
             <textarea id="ftfNotes" rows="3"></textarea>
           </div>
+          <p class="ft-found-none" data-ft-none hidden>項目設定で、入力する項目がすべて外されています。</p>
         </div>
         <div class="button-group button-group-row">
           <button type="button" class="btn btn-primary" data-ft-output>出力</button>
@@ -246,6 +239,7 @@ function buildDom() {
     participants: q('#ftfParticipants'),
     body: q('#ftfBody'),
     notes: q('#ftfNotes'),
+    none: q('[data-ft-none]'),
     fileName: exportModal.querySelector('#ftFoundFileName'),
     exportNote: exportModal.querySelector('[data-ft-export-note]'),
     share: exportModal.querySelector('[data-ft-share]'),
@@ -267,6 +261,46 @@ function buildDom() {
     else if (t.hasAttribute('data-ft-share')) sharePdf();
     else if (t.hasAttribute('data-ft-save')) savePdf();
   });
+
+  applySettings();
+}
+
+// 項目設定を入力の画面に当てはめる: 入力しない項目の欄を隠し、初期値と候補を入れる
+function applySettings() {
+  const { el, settings } = state;
+  for (const item of REPORT_ITEMS) {
+    const s = settings[item.key];
+    const field = el.modal.querySelector(`[data-ft-item="${item.key}"]`);
+    if (field) field.hidden = !s.enabled;
+    if (!s.enabled) continue;
+    if (item.kind === 'choice') {
+      const radio = el.modal.querySelector(`[data-ft-item="${item.key}"] input[value="${s.default}"]`);
+      if (radio) radio.checked = true;
+    } else if (item.kind !== 'auto' && el[item.key]) {
+      el[item.key].value = s.default;
+    }
+    if (hasCandidates(item) && s.candidates.length > 0 && el[item.key]) {
+      const list = document.createElement('datalist');
+      list.id = `ftfList-${item.key}`;
+      for (const c of s.candidates) {
+        const opt = document.createElement('option');
+        opt.value = c;
+        list.append(opt);
+      }
+      el.inputBody.append(list);
+      el[item.key].setAttribute('list', list.id);
+    }
+  }
+  // 2 つ並べた欄が両方とも隠れたら、行ごと隠す
+  for (const row of el.modal.querySelectorAll('.ft-field-row')) {
+    row.hidden = [...row.children].every((c) => c.hidden);
+  }
+  el.none.hidden = REPORT_ITEMS.some((item) => settings[item.key].enabled);
+}
+
+// 項目を入力するかどうか(項目設定)
+function isEnabled(key) {
+  return state.settings[key]?.enabled !== false;
 }
 
 function showStep(step) {
@@ -367,12 +401,12 @@ function showInputStep() {
   const { el } = state;
   // 写真を選び直したら、日時の欄を作り直す(手で書き換えていても入れ直す。仕様 4.3)
   const key = [...state.selected].sort().join(',');
-  if (key !== state.dateKey) {
+  if (key !== state.dateKey && isEnabled('date')) {
     el.date.value = buildDateRange(photos);
     state.dateKey = key;
   }
-  renderCaptions(photos);
-  renderPlaceRef(photos);
+  if (isEnabled('captions')) renderCaptions(photos);
+  if (isEnabled('place')) renderPlaceRef(photos);
   el.warn.hidden = estimateReportMapZoom(photos.map((p) => [p.lat, p.lng])) >= FT_MAP_WARN_ZOOM;
   showStep('input');
 }
@@ -429,9 +463,10 @@ function checkedValue(name) {
   return state.el.modal.querySelector(`input[name="${name}"]:checked`)?.value ?? '';
 }
 
+// 入力の画面の値。入力しない項目(項目設定)は空にする(報告書では空欄)
 function collectInput() {
   const { el } = state;
-  return {
+  const input = {
     date: el.date.value,
     weather: el.weather.value,
     temperature: el.temperature.value,
@@ -448,6 +483,11 @@ function collectInput() {
     notes: el.notes.value,
     captions: state.captions
   };
+  for (const item of REPORT_ITEMS) {
+    if (isEnabled(item.key)) continue;
+    input[item.key] = item.key === 'captions' ? new Map() : '';
+  }
+  return input;
 }
 
 // ===== ③ 出力 =====
@@ -508,18 +548,10 @@ function exportFileName() {
   return typed || defaultReportFileName(state.pdf.report);
 }
 
-// 記入者・通報先・通報手段を、次の初期値として覚える(仕様 4.2)
-function rememberInputs(report) {
-  const values = {};
-  for (const key of REMEMBERED_FIELDS) values[key] = report[key];
-  writeLocalJSON(LAST_INPUTS_KEY, values);
-}
-
 // 共有: 押した操作の中で、待たずに共有の画面を開く(待つと、端末によっては開けなくなる)
 async function sharePdf() {
   if (!state?.pdf) return;
   const name = exportFileName();
-  const report = state.pdf.report;
   const file = new File([state.pdf.blob], `${name}.pdf`, { type: 'application/pdf' });
   try {
     await navigator.share({ files: [file], title: name });
@@ -528,7 +560,6 @@ async function sharePdf() {
     showToast(`共有できませんでした（${errorText(err)}）`, { durationSec: 5 });
     return;
   }
-  rememberInputs(report);
   closeExportModal();
   showToast('報告書を共有しました');
 }
@@ -538,6 +569,5 @@ function savePdf() {
   if (!state?.pdf) return;
   const name = exportFileName();
   downloadBlob(state.pdf.blob, `${name}.pdf`);
-  rememberInputs(state.pdf.report);
   closeExportModal();
 }
