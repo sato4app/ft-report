@@ -5,6 +5,7 @@
 //   candidates … 候補(入力欄で選べる値の一覧)
 // 設定は端末の localStorage にだけ保存する(サーバーには送らない)。
 import { readLocalJSON, writeLocalJSON } from '../common/storage.js';
+import { FT_REPORT_TITLE } from './ft-report-data.js';
 
 const SETTINGS_KEY = 'ft-report.itemSettings';
 // 以前の版で発見報告が覚えていた「前回の値」(記入者・通報先・通報手段)。
@@ -23,8 +24,12 @@ export const REPORT_TYPES = [
 //   textarea … 複数行の文字。入力する・しない、初期値
 //   choice   … 要・不要・未選択。入力する・しない、初期値
 //   auto     … アプリが値を作る(日時・通報日時・写真の見出し)。入力する・しないだけ
+// required の項目は「入力する・しない」を選べない(常に入力の画面に出す)。
+// defaultValue は初めの状態の初期値(無ければ空)。
 // 番号は入力しない(空欄で出す)ので、ここには無い。
 export const REPORT_ITEMS = [
+  // 報告書のタイトル(様式の見出し)。発見報告・処理報告で同じものを初期値にする(2026-11-27)
+  { key: 'title', label: 'タイトル', kind: 'text', required: true, defaultValue: FT_REPORT_TITLE },
   { key: 'date', label: '日時', kind: 'auto', note: '写真の撮影日時から作ります。' },
   { key: 'weather', label: '天気', kind: 'text', candidates: ['晴', '曇', '雨', '雪'] },
   { key: 'temperature', label: '気温（℃）', kind: 'number' },
@@ -53,11 +58,16 @@ export function hasCandidates(item) {
   return item.kind === 'text';
 }
 
-// 初めの状態の設定(全部の項目を入力する。初期値は空。候補は項目の定義のもの)
+// 「入力する・しない」を選べるか
+export function hasToggle(item) {
+  return !item.required;
+}
+
+// 初めの状態の設定(全部の項目を入力する。初期値・候補は項目の定義のもの。無ければ空)
 export function defaultItemSettings() {
   const settings = {};
   for (const item of REPORT_ITEMS) {
-    settings[item.key] = { enabled: true, default: '', candidates: [...(item.candidates || [])] };
+    settings[item.key] = { enabled: true, default: item.defaultValue || '', candidates: [...(item.candidates || [])] };
   }
   return settings;
 }
@@ -70,7 +80,7 @@ function normalize(saved) {
     const s = saved[item.key];
     if (!s || typeof s !== 'object') continue;
     const target = settings[item.key];
-    if (typeof s.enabled === 'boolean') target.enabled = s.enabled;
+    if (typeof s.enabled === 'boolean' && hasToggle(item)) target.enabled = s.enabled;
     if (hasDefault(item) && typeof s.default === 'string') {
       target.default = item.kind === 'choice' && !CHOICE_VALUES.includes(s.default) ? '' : s.default;
     }

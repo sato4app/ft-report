@@ -7,10 +7,8 @@ import { pad2, formatLocalDate } from '../common/utils.js';
 
 // 選べる写真の上限(番号は ①〜⑳)
 export const FT_REPORT_MAX_PHOTOS = 20;
-// 様式の見出し
+// 報告書のタイトル(様式の見出し)の初めの状態。項目設定の「タイトル」の初期値で、変えられる(ft-report-items.js)
 export const FT_REPORT_TITLE = '山麓保全委員会　山林部会活動報告（ハイキング道倒木整備サポート）';
-// 2 ページ目以降の見出し
-export const FT_REPORT_CONTINUED_TITLE = '山林部会活動報告（続き）';
 // ファイル名の頭
 const FILE_NAME_PREFIX = '山麓保全委員会 山林部会活動報告書';
 
@@ -82,7 +80,7 @@ export function defaultCaption(photo) {
 
 // ===== 報告書の中身 =====
 // input: 入力の画面の値(どれも未入力でよい)
-//   date, weather, temperature, writer, subject, place, reportTo, reportMeans,
+//   title(報告書のタイトル), date, weather, temperature, writer, subject, place, reportTo, reportMeans,
 //   reportDate(type="date" の値 2026-11-10), participants, body,
 //   contactReportTo・contactGov('要' / '不要' / '')、notes、captions(写真の id → 見出し)
 // photos: 選んだ写真(選んだ順)。photos.js の写真({ id, name, timeMs, lat, lng, blob })
@@ -93,7 +91,8 @@ export function buildReport(input, photos) {
   const reportDate = text(input.reportDate);
   return {
     number: '',   // 番号は空欄で出す(採番か入力にするときは仕様を変える)
-    title: FT_REPORT_TITLE,
+    title: text(input.title),   // 空なら報告書のタイトルも空欄
+
     date: text(input.date),
     weather: text(input.weather),
     temperature: temperature ? `${temperature}℃` : '',

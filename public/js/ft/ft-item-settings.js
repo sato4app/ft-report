@@ -8,7 +8,7 @@ import { blurActiveElement } from '../common/ui.js';
 import { showToast } from '../common/messages.js';
 import { escapeHtml } from '../common/utils.js';
 import {
-  REPORT_TYPES, REPORT_ITEMS, hasDefault, hasCandidates,
+  REPORT_TYPES, REPORT_ITEMS, hasDefault, hasCandidates, hasToggle,
   loadItemSettings, saveItemSettings, defaultItemSettings
 } from './ft-report-items.js';
 
@@ -124,13 +124,18 @@ function renderItems() {
       body += `<div class="ft-field"><label for="${id}-candidates">候補（1 行に 1 つ）</label>`
         + `<textarea id="${id}-candidates" data-role="candidates" rows="3">${escapeHtml(s.candidates.join('\n'))}</textarea></div>`;
     }
-    card.innerHTML = `
-      <label class="ft-item-head">
-        <input type="checkbox" data-role="enabled"${s.enabled ? ' checked' : ''} />
-        <span class="ft-item-name">${escapeHtml(item.label)}</span>
-        <span class="ft-item-state">入力する</span>
-      </label>
-      <div class="ft-item-body">${body}</div>`;
+    // 「入力する・しない」を選べない項目(タイトル)は、チェックの代わりに「必ず入力」と出す
+    const head = hasToggle(item)
+      ? `<label class="ft-item-head">
+          <input type="checkbox" data-role="enabled"${s.enabled ? ' checked' : ''} />
+          <span class="ft-item-name">${escapeHtml(item.label)}</span>
+          <span class="ft-item-state">入力する</span>
+        </label>`
+      : `<div class="ft-item-head">
+          <span class="ft-item-name">${escapeHtml(item.label)}</span>
+          <span class="ft-item-state">必ず入力</span>
+        </div>`;
+    card.innerHTML = `${head}<div class="ft-item-body">${body}</div>`;
     el.items.append(card);
   }
 }
@@ -140,7 +145,8 @@ function collectCurrent() {
   const settings = state.drafts[state.current];
   for (const card of state.el.items.querySelectorAll('.ft-item')) {
     const s = settings[card.dataset.key];
-    s.enabled = card.querySelector('[data-role="enabled"]').checked;
+    const box = card.querySelector('[data-role="enabled"]');
+    if (box) s.enabled = box.checked;   // 選べない項目(タイトル)は常に入力する
     const def = card.querySelector('[data-role="default"]');
     if (def) s.default = def.value;
     const cand = card.querySelector('[data-role="candidates"]');
@@ -158,7 +164,7 @@ function switchType(type) {
 
 function resetCurrent() {
   const label = REPORT_TYPES.find((t) => t.key === state.current)?.label || '';
-  if (!window.confirm(`${label}の項目の設定を、初めの状態（全部の項目を入力する・初期値なし）に戻しますか。\n「保存」を押すまでは保存されません。`)) return;
+  if (!window.confirm(`${label}の項目の設定を、初めの状態（全部の項目を入力する。タイトルは初めのタイトル、ほかの初期値はなし）に戻しますか。\n「保存」を押すまでは保存されません。`)) return;
   state.drafts[state.current] = defaultItemSettings();
   renderItems();
 }

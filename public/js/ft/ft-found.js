@@ -90,11 +90,17 @@ function buildDom() {
         <!-- 各欄の data-ft-item は項目設定の項目(ft-report-items.js の REPORT_ITEMS の key)。
              入力しない項目の欄は隠し、初期値と候補は applySettings で入れる -->
         <div class="ft-form">
+          <div class="ft-field" data-ft-item="title">
+            <label for="ftfTitle">タイトル</label>
+            <input type="text" id="ftfTitle" autocomplete="off" />
+          </div>
           <div class="ft-field" data-ft-item="date">
             <label for="ftfDate">日時</label>
             <input type="text" id="ftfDate" autocomplete="off" />
           </div>
-          <div class="ft-field-row">
+          <!-- 天気・気温(幅は狭く)と、その右の「天気・気温を調べる」(ft-weather.js)。
+               ボタンと説明は、天気・気温の両方を入力しないときは出さない -->
+          <div class="ft-field-row ft-weather-row">
             <div class="ft-field" data-ft-item="weather">
               <label for="ftfWeather">天気</label>
               <input type="text" id="ftfWeather" autocomplete="off" />
@@ -103,12 +109,11 @@ function buildDom() {
               <label for="ftfTemperature">気温（℃）</label>
               <input type="number" id="ftfTemperature" step="any" />
             </div>
+            <div class="ft-weather-tool" data-ft-weather-tool>
+              <button type="button" class="btn btn-secondary ft-weather-btn" data-ft-weather>天気・気温を調べる</button>
+            </div>
           </div>
-          <!-- 天気・気温を調べる(ft-weather.js)。天気・気温の両方を入力しないときは出さない -->
-          <div class="ft-weather-tool" data-ft-weather-tool>
-            <button type="button" class="btn btn-secondary ft-weather-btn" data-ft-weather>天気・気温を調べる</button>
-            <p class="ft-weather-note" data-ft-weather-note></p>
-          </div>
+          <p class="ft-weather-note" data-ft-weather-note></p>
           <div class="ft-field" data-ft-item="writer">
             <label for="ftfWriter">記入者</label>
             <input type="text" id="ftfWriter" autocomplete="off" />
@@ -166,9 +171,7 @@ function buildDom() {
           <div class="ft-field" data-ft-item="notes">
             <label for="ftfNotes">連絡事項</label>
             <textarea id="ftfNotes" rows="3"></textarea>
-          </div>
-          <p class="ft-found-none" data-ft-none hidden>項目設定で、入力する項目がすべて外されています。</p>
-        </div>
+          </div>        </div>
         <div class="button-group button-group-row">
           <button type="button" class="btn btn-primary" data-ft-output>出力</button>
           <button type="button" class="btn btn-neutral" data-ft-back>戻る</button>
@@ -225,7 +228,8 @@ function buildDom() {
   const q = (sel) => modal.querySelector(sel);
   state.el = {
     modal, exportModal, busy,
-    title: q('#ftFoundTitle'),
+    heading: q('#ftFoundTitle'),   // 画面の見出し(報告書のタイトルの欄は title)
+    title: q('#ftfTitle'),
     selectBody: q('[data-step="select"]'),
     inputBody: q('[data-step="input"]'),
     grid: q('[data-ft-grid]'),
@@ -247,7 +251,6 @@ function buildDom() {
     participants: q('#ftfParticipants'),
     body: q('#ftfBody'),
     notes: q('#ftfNotes'),
-    none: q('[data-ft-none]'),
     weatherTool: q('[data-ft-weather-tool]'),
     weatherBtn: q('[data-ft-weather]'),
     weatherNote: q('[data-ft-weather-note]'),
@@ -303,13 +306,13 @@ function applySettings() {
       el[item.key].setAttribute('list', list.id);
     }
   }
-  // 2 つ並べた欄が両方とも隠れたら、行ごと隠す
+  // 天気・気温を調べるボタンと説明は、天気か気温のどちらかを入力するときだけ出す
+  el.weatherTool.hidden = !settings.weather.enabled && !settings.temperature.enabled;
+  el.weatherNote.hidden = el.weatherTool.hidden;
+  // 並べた欄が全部隠れたら、行ごと隠す
   for (const row of el.modal.querySelectorAll('.ft-field-row')) {
     row.hidden = [...row.children].every((c) => c.hidden);
   }
-  // 天気・気温を調べるボタンは、天気か気温のどちらかを入力するときだけ出す
-  el.weatherTool.hidden = !settings.weather.enabled && !settings.temperature.enabled;
-  el.none.hidden = REPORT_ITEMS.some((item) => settings[item.key].enabled);
 }
 
 // 項目を入力するかどうか(項目設定)
@@ -322,7 +325,7 @@ function showStep(step) {
   const { el } = state;
   el.selectBody.hidden = step !== 'select';
   el.inputBody.hidden = step !== 'input';
-  el.title.textContent = step === 'select' ? '発見報告（写真の選択）' : '発見報告（入力）';
+  el.heading.textContent = step === 'select' ? '発見報告（写真の選択）' : '発見報告（入力）';
   (step === 'select' ? el.selectBody : el.inputBody).scrollTop = 0;
 }
 
@@ -527,6 +530,7 @@ function checkedValue(name) {
 function collectInput() {
   const { el } = state;
   const input = {
+    title: el.title.value,
     date: el.date.value,
     weather: el.weather.value,
     temperature: el.temperature.value,

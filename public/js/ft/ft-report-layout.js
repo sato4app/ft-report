@@ -8,9 +8,9 @@
 //   活動内容の欄     … 本文 → 地図 → 写真(1 行に 3 枚。各写真の上に見出し)の順に流し込む。
 //                      収まらない分は次のページへ送る(本文は行の途中で、写真は行ごとに。地図は分けない)
 //   連絡事項の欄     … 最後のページの末尾。通報先へ連絡・行政への連絡(選んだ方を丸で囲む)と本文
-//   2 ページ目以降   … 上部に「山林部会活動報告（続き）」と対象案件
+//   2 ページ目以降   … 上部に「タイトル（続き）」と対象案件
 //   どのページも     … 下に「1 / 3」の形のページ番号
-import { FT_REPORT_TITLE, FT_REPORT_CONTINUED_TITLE } from './ft-report-data.js';
+import { FT_REPORT_TITLE } from './ft-report-data.js';
 import { renderReportMap, computeMapView } from './ft-report-map.js';
 import { buildImagePdf } from './ft-pdf.js';
 
@@ -262,7 +262,8 @@ function drawFirstHeader(ctx, report, page) {
     ctx.textAlign = 'center';
     ctx.fillText(report.number, LEFT + NUMBER_BOX_W / 2, MARGIN_TOP + NUMBER_BOX_H / 2);
   }
-  // 見出し(番号の枠の右の残りの幅の中央。入らなければ字を小さくする)
+  // 見出し(報告書のタイトル。項目設定・入力の画面で変えられる)。番号の枠の右の残りの幅の中央。
+  // 入らなければ字を小さくする。空なら書かない
   const titleLeft = LEFT + NUMBER_BOX_W + 20;
   const titleW = RIGHT - titleLeft;
   let px = TITLE_PX;
@@ -300,10 +301,16 @@ function drawFirstHeader(ctx, report, page) {
   }
 }
 
-// 2 ページ目以降の上部
+// 2 ページ目以降の上部: 「タイトル（続き）　対象案件」(入らなければ字を小さくする)
 function drawContinuedHeader(ctx, report) {
-  const text = report.subject ? `${FT_REPORT_CONTINUED_TITLE}　${report.subject}` : FT_REPORT_CONTINUED_TITLE;
-  ctx.font = font(LABEL_PX, true);
+  const head = `${report.title}（続き）`;
+  const text = report.subject ? `${head}　${report.subject}` : head;
+  let px = LABEL_PX;
+  ctx.font = font(px, true);
+  while (px > 18 && ctx.measureText(text).width > CONTENT_W) {
+    px -= 1;
+    ctx.font = font(px, true);
+  }
   ctx.fillStyle = COLOR_TEXT;
   ctx.textAlign = 'left';
   ctx.fillText(text, LEFT, MARGIN_TOP + CONT_HEADER_H / 2 - 4);
@@ -496,7 +503,9 @@ export async function buildReportPdf(report, features) {
   }
   map.canvas.width = 0;
   map.canvas.height = 0;
-  const title = report.subject ? `${FT_REPORT_TITLE} ${report.subject}` : FT_REPORT_TITLE;
+  // PDF の文書の情報のタイトル(タイトルが空なら、初めのタイトル)
+  const baseTitle = report.title || FT_REPORT_TITLE;
+  const title = report.subject ? `${baseTitle} ${report.subject}` : baseTitle;
   const blob = buildImagePdf(images, { title, producer: '箕面倒木報告' });
   return { blob, pageCount: pages.length, missingTiles: map.missingTiles };
 }

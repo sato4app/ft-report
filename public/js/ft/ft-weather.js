@@ -30,7 +30,7 @@ function localDate(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-// timeMs の時刻の天気と気温を取る。返す値: { weather: '晴' など, temperature: 数値(℃。小数 1 桁), hour: 'YYYY-MM-DDTHH:00' }。
+// timeMs の時刻の天気と気温を取る。返す値: { weather: '晴' など, temperature: 数値(℃。整数に丸める), hour: 'YYYY-MM-DDTHH:00' }。
 // 取れなければ例外を投げる(通信できない・その時刻のデータが無いなど)
 export async function fetchMinohWeather(timeMs) {
   const at = new Date(timeMs);
@@ -65,7 +65,7 @@ export async function fetchMinohWeather(timeMs) {
   if (!Number.isFinite(temp) && !Number.isFinite(code)) throw new Error('その日時のデータがありません');
   return {
     weather: Number.isFinite(code) ? weatherCodeToText(code) : '',
-    temperature: Number.isFinite(temp) ? Math.round(temp * 10) / 10 : null,
+    temperature: Number.isFinite(temp) ? Math.round(temp) || 0 : null,   // 整数に丸める(-0 は 0 に)
     hour
   };
 }
