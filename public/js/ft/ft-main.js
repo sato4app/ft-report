@@ -6,15 +6,15 @@
 import { showToast } from '../common/messages.js';
 import { checkAppShellUpdate } from '../data/update.js';
 import { checkPublishedDataUpdate } from '../data/published-data.js';
-import { openFoundReport } from './ft-found.js';
+import { openReportScreen } from './ft-report-screen.js';
 import { openItemSettings } from './ft-item-settings.js';
 
 // 起動時画面に足す、倒木報告のボタン(上から順に並べる)。open は押したときに開く画面(無ければ準備中)。
 // below の付いたボタンは、列の下端(処理報告の下端。画面の上から 4 割)より下に置く(ft-style.css の .ft-home-btn-below)
 const FT_HOME_BUTTONS = [
-  { id: 'ftBtnFind', label: '発見報告', open: openFoundReport },   // docs/ft-funcspec-found.md
+  { id: 'ftBtnFind', label: '発見報告', open: () => openReportScreen('found') },       // docs/ft-funcspec-found.md
   { id: 'ftBtnGuide', label: '探索・案内' },
-  { id: 'ftBtnProcess', label: '処理報告' },
+  { id: 'ftBtnProcess', label: '処理報告', open: () => openReportScreen('process') },  // docs/ft-funcspec-process.md
   { id: 'ftBtnItems', label: '設定', open: openItemSettings, below: true }   // 項目設定。docs/ft-funcspec-items.md
 ];
 

@@ -1,5 +1,9 @@
-// 発見報告(仕様 docs/ft-funcspec-found.md)。
-// 起動時画面の「発見報告」から開く。① 写真の選択 →「次へ」→ ② 入力 →「出力」→ ③ ファイル名の確認 → 共有・保存。
+// 報告の画面(発見報告・処理報告で共通)。仕様は docs/ft-funcspec-found.md(発見報告)と
+// docs/ft-funcspec-process.md(処理報告。発見報告との違いだけを書いている)。
+// 起動時画面の「発見報告」「処理報告」から openReportScreen('found' / 'process') で開く。
+// ① 写真の選択 →「次へ」→ ② 入力 →「出力」→ ③ ファイル名の確認 → 共有・保存。
+// 報告の種類で変わるのは、使う項目設定(報告の種類ごと)と、画面の見出し・知らせの文言だけ(REPORT_SCREENS)。
+// 報告書の様式・配置・地図・PDF は同じ。
 // - 画面(モーダル)はここで作る(index.html は書き換えない)。開くたびに作り、閉じたら取り除く。
 // - 報告書と入力した内容は保存しない。閉じると消える。
 // - 入力する項目・初期値・候補は、項目設定(ft-item-settings.js。設定の読み書きは ft-report-items.js)に従う。
@@ -8,6 +12,7 @@
 // - 写真は変えない・消さない。
 // - 「天気・気温を調べる」で、最初の写真の撮影時刻の箕面大滝付近の天気・気温を Open-Meteo から取って入れる(ft-weather.js)。
 // - 背景(画面の外側)を押しても閉じない(入力した内容をうっかり失わないため)。閉じるのは「×」「閉じる」だけ。
+// - 画面の要素の id(ftFound…)・class(ft-found-…)は、発見報告を先に作ったときの名前のまま(処理報告でも同じものを使う)。
 import { getPhotos, getPhoto, getPhotoThumbUrl } from '../photo/photos.js';
 import { blurActiveElement } from '../common/ui.js';
 import { showToast } from '../common/messages.js';
@@ -22,19 +27,36 @@ import { estimateReportMapZoom, buildReportPdf } from './ft-report-layout.js';
 import { REPORT_ITEMS, hasCandidates, loadItemSettings } from './ft-report-items.js';
 import { fetchMinohWeather, WEATHER_SOURCE } from './ft-weather.js';
 
+// 報告の種類ごとの違い(key は ft-report-items.js の REPORT_TYPES と同じ)
+const REPORT_SCREENS = {
+  found: {
+    label: '発見報告',
+    noPhotos: '写真がありません。地図画面の「写真を撮影」で倒木の写真を撮ってください。'
+  },
+  process: {
+    label: '処理報告',
+    noPhotos: '写真がありません。地図画面の「写真を撮影」で倒木の処理の写真を撮ってください。'
+  }
+};
+
 // 開いている間の状態(閉じたら null)
 let state = null;
 
 // ===== 開く・閉じる =====
-export function openFoundReport() {
+// type: 'found'(発見報告) / 'process'(処理報告)
+export function openReportScreen(type) {
   if (state) return;
+  const screen = REPORT_SCREENS[type];
+  if (!screen) return;
   if (getPhotos().length === 0) {
-    showToast('写真がありません。地図画面の「写真を撮影」で倒木の写真を撮ってください。', { durationSec: 5 });
+    showToast(screen.noPhotos, { durationSec: 5 });
     return;
   }
   state = {
     el: null,
-    settings: loadItemSettings('found'),   // 項目設定(入力する項目・初期値・候補)
+    type,
+    label: screen.label,                 // 画面の見出しに使う報告の名前
+    settings: loadItemSettings(type),    // 項目設定(報告の種類ごと。入力する項目・初期値・候補)
     selected: [],          // 選んだ写真の id(選んだ順)
     captions: new Map(),   // 写真の id → 見出し(選び直しても残す)
     dateKey: null,         // 日時の欄を作ったときの写真の組
@@ -51,7 +73,7 @@ export function openFoundReport() {
   showStep('select');
 }
 
-function closeFoundReport() {
+function closeReportScreen() {
   if (!state || state.busy) return;
   blurActiveElement();
   state.observer?.disconnect();
@@ -71,7 +93,7 @@ function buildDom() {
     <div class="modal-backdrop"></div>
     <div class="modal-panel ft-found-panel" role="document">
       <header class="modal-header">
-        <h2 id="ftFoundTitle">発見報告</h2>
+        <h2 id="ftFoundTitle">${state.label}</h2>
         <button type="button" class="btn-icon" data-ft-close aria-label="閉じる">×</button>
       </header>
 
@@ -263,7 +285,7 @@ function buildDom() {
   modal.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) return;
-    if (t.hasAttribute('data-ft-close')) closeFoundReport();
+    if (t.hasAttribute('data-ft-close')) closeReportScreen();
     else if (t.hasAttribute('data-ft-next')) showInputStep();
     else if (t.hasAttribute('data-ft-back')) showStep('select');
     else if (t.hasAttribute('data-ft-output')) startOutput();
@@ -325,7 +347,7 @@ function showStep(step) {
   const { el } = state;
   el.selectBody.hidden = step !== 'select';
   el.inputBody.hidden = step !== 'input';
-  el.heading.textContent = step === 'select' ? '発見報告（写真の選択）' : '発見報告（入力）';
+  el.heading.textContent = `${state.label}${step === 'select' ? '（写真の選択）' : '（入力）'}`;
   (step === 'select' ? el.selectBody : el.inputBody).scrollTop = 0;
 }
 

@@ -48,8 +48,8 @@ minoh-hiking と同じ 2 段階で配信する。
 | `public/icons/ft-startup-1024x1834.webp` | 起動時画面の画像（「箕面の森 倒木報告」の文字入り） |
 | `assets/ft-startup-20261126-v3.odg` | 起動時画面の画像の元データ（LibreOffice Draw）。`-v1`・`-v2` は前の版。公開しない（`public/` の外） |
 | `assets/ft-startup-1024x1835.png` | 起動時画面の画像の絵の部分。公開しない |
-| `public/js/ft/ft-main.js` | ft-report だけの処理の入口（`initFt()`）。起動時画面の倒木報告のボタン（発見報告・探索・案内・処理報告と、項目設定を開く「設定」）を作る。「探索・案内」「処理報告」はまだ作っておらず、押すと「準備中です」と出る |
-| `public/js/ft/ft-found.js` | 発見報告の画面（写真の選択・入力・出力） |
+| `public/js/ft/ft-main.js` | ft-report だけの処理の入口（`initFt()`）。起動時画面の倒木報告のボタン（発見報告・探索・案内・処理報告と、項目設定を開く「設定」）を作る。「探索・案内」はまだ作っておらず、押すと「準備中です」と出る |
+| `public/js/ft/ft-report-screen.js` | 報告の画面（写真の選択・入力・出力）。発見報告・処理報告で共通 |
 | `public/js/ft/ft-report-data.js` | 報告書の中身の組み立て（PDF・Excel で共通）と、地図データ（緊急ポイント・ルート）の読み込み |
 | `public/js/ft/ft-report-layout.js` | 報告書の様式の配置と PDF の作成 |
 | `public/js/ft/ft-report-map.js` | 報告書の地図の画像 |
@@ -62,6 +62,7 @@ minoh-hiking と同じ 2 段階で配信する。
 | `docs/ft-overview.md` | この文書 |
 | `docs/ft-funcspec-found.md` | 発見報告の機能仕様書（2026-11-26 実装） |
 | `docs/ft-funcspec-items.md` | 項目設定の機能仕様書（2026-11-26 実装） |
+| `docs/ft-funcspec-process.md` | 処理報告の機能仕様書（2026-11-27 実装。発見報告との違いだけ） |
 
 ### 5.2 minoh-hiking 由来のファイルで書き換えた箇所
 
@@ -78,7 +79,7 @@ minoh-hiking と同じ 2 段階で配信する。
 
 ## 6. 今後決めること
 
-- 倒木報告のための機能のうち、「探索・案内」と「処理報告」の中身（発見報告は作った。→ `docs/ft-funcspec-found.md`）
+- 倒木報告のための機能のうち、「探索・案内」の中身（発見報告・処理報告は作った。→ `docs/ft-funcspec-found.md`・`docs/ft-funcspec-process.md`）
 - 報告書の Excel の出力（様式の元の Excel に値と写真を入れる形を検討する）
 - データ共有（サーバーに保管する）機能を持たせるか。持たせる場合は、「外部へ送信しない」趣旨の文言（よくある質問・使い方など）を見直す
 - 本番（Vercel）の URL

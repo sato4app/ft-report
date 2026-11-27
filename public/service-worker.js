@@ -4,7 +4,7 @@
 // - app-shell-{日付}.{連番}: アプリシェル(HTML/CSS/JS、CDN、アイコン)。取得戦略は handleShellRequest。
 // 公開API(/api/*)は横取りしない。取得とキャッシュはアプリ側(published-data.js)が version を見て行う。
 
-const SHELL_CACHE = 'app-shell-2026-11-27.2';
+const SHELL_CACHE = 'app-shell-2026-11-27.3';
 // 取り込んだ minoh-hiking の版: 2026-11-22.1
 const TILE_CACHE_PREFIX = 'gsi-';
 const SHELL_CACHE_PREFIX = 'app-shell-';
@@ -86,7 +86,7 @@ const SHELL_LOCAL_PATHS = [
   './icons/Startup-1024x1836.webp',
   // ---- ft-report 専用 ----
   './js/ft/ft-main.js',
-  './js/ft/ft-found.js',
+  './js/ft/ft-report-screen.js',
   './js/ft/ft-report-data.js',
   './js/ft/ft-report-layout.js',
   './js/ft/ft-report-map.js',

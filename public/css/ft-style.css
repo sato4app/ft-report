@@ -119,7 +119,8 @@
   width: max-content;
 }
 
-/* ===== 発見報告(ft-found.js。仕様は docs/ft-funcspec-found.md) =====
+/* ===== 報告の画面(発見報告・処理報告。ft-report-screen.js。仕様は docs/ft-funcspec-found.md・ft-funcspec-process.md) =====
+   class 名の ft-found- は、発見報告を先に作ったときの名前のまま(処理報告でも同じものを使う)。
    モーダルの枠・見出し・ボタン・写真のタイルは、既存の部品(.modal・.photo-list-tile・.btn など)を使う。
    ここでは発見報告で足した部品だけを決める。 */
 .ft-found-panel {

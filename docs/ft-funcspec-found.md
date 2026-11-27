@@ -16,6 +16,8 @@
 
 起動時画面の「発見報告」ボタン（`#ftBtnFind`）。
 
+処理報告（`docs/ft-funcspec-process.md`）も、この仕様と同じ画面・様式を使う（違いは、使う項目設定と画面の見出し・文言だけ）。
+
 ### 1.3 決定事項（2026-11-26）
 
 | 事項 | 決定 |
@@ -266,10 +268,10 @@
 
 | ファイル | 役割 |
 |---|---|
-| `public/js/ft/ft-main.js` | 起動時画面の「発見報告」ボタンから `ft-found.js` の `openFoundReport()` を呼ぶ |
+| `public/js/ft/ft-main.js` | 起動時画面の「発見報告」ボタンから `ft-report-screen.js` の `openReportScreen('found')` を呼ぶ |
 | `public/js/ft/ft-report-items.js` | 記入項目の一覧と項目設定の読み書き（→ `docs/ft-funcspec-items.md`）。入力の画面は、これに従って欄を隠し、初期値・候補を入れる |
 | `public/js/ft/ft-weather.js` | 天気・気温の取得（Open-Meteo。→ [4.6](#46-天気気温を調べる2026-11-27)） |
-| `public/js/ft/ft-found.js` | 発見報告の画面と流れ（写真の選択・入力・出力）。画面は開くたびに作り、閉じたら取り除く |
+| `public/js/ft/ft-report-screen.js` | 報告の画面と流れ（写真の選択・入力・出力）。発見報告・処理報告で共通（2026-11-27 に `ft-found.js` から名前を変えた）。画面は開くたびに作り、閉じたら取り除く |
 | `public/js/ft/ft-report-data.js` | 入力と写真から報告書の中身（項目・日時・写真の並び）を組み立てる。PDF・Excel で共通 |
 | `public/js/ft/ft-report-layout.js` | 様式の配置。ページの画像を描く |
 | `public/js/ft/ft-report-map.js` | 地図の画像（タイル・写真の印・緊急ポイント・ルート・縮尺・出典） |

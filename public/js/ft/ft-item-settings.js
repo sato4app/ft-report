@@ -49,9 +49,7 @@ function buildDom() {
       </header>
       <div class="modal-body" data-ft-body>
         <div class="ft-tabs" role="tablist" aria-label="報告の種類">${tabs}</div>
-        <p class="modal-note ft-items-note">報告の入力の画面に出す項目、最初から入る値（初期値）、入力欄で選べる候補を決めます。「入力する」を外した項目は入力の画面に出さず、報告書では空欄になります。設定はこの端末（このブラウザ）の中にだけ保存され、ほかの人やほかの端末には影響しません。</p>
-        <p class="modal-note ft-items-note" data-ft-process-note hidden>処理報告はまだ作っていません。ここでの設定は、処理報告を作ったときに使います。</p>
-        <div class="ft-items" data-ft-items></div>
+        <p class="modal-note ft-items-note">報告の入力の画面に出す項目、最初から入る値（初期値）、入力欄で選べる候補を決めます。「入力する」を外した項目は入力の画面に出さず、報告書では空欄になります。設定はこの端末（このブラウザ）の中にだけ保存され、ほかの人やほかの端末には影響しません。</p>        <div class="ft-items" data-ft-items></div>
         <div class="button-group button-group-row">
           <button type="button" class="btn btn-primary" data-ft-save>保存</button>
           <button type="button" class="btn btn-neutral" data-ft-cancel>キャンセル</button>
@@ -65,8 +63,7 @@ function buildDom() {
   state.el = {
     modal,
     body: modal.querySelector('[data-ft-body]'),
-    items: modal.querySelector('[data-ft-items]'),
-    processNote: modal.querySelector('[data-ft-process-note]')
+    items: modal.querySelector('[data-ft-items]')
   };
 
   modal.addEventListener('click', (e) => {
@@ -93,7 +90,6 @@ function renderItems() {
     tab.classList.toggle('is-active', on);
     tab.setAttribute('aria-selected', String(on));
   }
-  el.processNote.hidden = current !== 'process';
   el.items.textContent = '';
   for (const item of REPORT_ITEMS) {
     const s = settings[item.key];
