@@ -1287,20 +1287,16 @@ body.view-state-map .leaflet-control-container {
   padding-top: 0.25rem;
 }
 
-/* 写真の表示の下のボタン(一覧・追加撮影・戻る)。等幅にはせず、「追加撮影」の文字の入る幅を他の2つの
-   倍にする(文字が長く、折り返さないように。余白を含めた幅は 320px の画面で 68:112:68)。
-   出せないとき(「一覧」「戻る」の2つ)は半分ずつ。
-   文字は折り返さず、収まらないときはそのボタンが文字の幅まで広がる。幅 320px の画面でも
-   「Take More」が1行に収まるよう、左右の余白はふつうのボタンより少し詰める。
+/* 写真の表示の下のボタン(一覧・追加撮影・戻る)。等幅にはせず、各ボタンを文字の幅から始めて、
+   余りを3つに等しく配る。文字の左右の余白がどのボタンも同じになり、文字の長い「追加撮影」が
+   そのぶん広くなる(幅 320px の画面で 72:104:72px)。文字は折り返さない。幅 320px の画面でも
+   「Take More」が1行に収まるよう、左右の余白の最小はふつうのボタンより少し詰める。
    .button-group-row > .btn(等幅)より後で効くよう、クラスを重ねて指定する */
 .button-group-row.photo-view-actions > .btn {
+  flex: 1 1 auto;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
   white-space: nowrap;
-}
-
-.button-group-row.photo-view-actions > #btnPhotoViewShoot {
-  flex-grow: 2;
 }
 
 #photoViewName {
