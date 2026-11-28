@@ -70,7 +70,7 @@ const DICT = {
   // ----- マップ画面 -----
   'map.ariaMap': { ja: '箕面エリア地理院地図', en: 'GSI map of the Minoh area' },
   'map.ariaLayers': { ja: '表示設定', en: 'Display settings' },
-  // 表示設定パネル(≡)のトグル。上から、画面に重ねる表示2つ・現在地2つ・移動経路・写真の順
+  // 表示設定パネル(≡)のトグル。上から、画面に重ねる表示2つ・現在地2つ・移動経路・写真・場所を検索の順
   'map.toggleClock': { ja: '時刻を表示', en: 'Show Clock' },
   'map.toggleZoomLevel': { ja: 'ズームレベルを表示', en: 'Show Zoom Level' },
   'map.toggleCurrentMarker': { ja: '現在地点をマーカー表示', en: 'Show Current Location Marker' },
@@ -79,6 +79,7 @@ const DICT = {
   'map.toggleCenterCurrent': { ja: '現在地点は中央に表示', en: 'Keep Current Location Centered' },
   'map.toggleTrackRecording': { ja: '移動経路を記録', en: 'Record Track' },
   'map.togglePhotoCapture': { ja: '写真を撮影', en: 'Take Photos' },
+  'map.toggleExplore': { ja: '場所を検索', en: 'Find Places' },
   'map.backToHome': { ja: '起動時の画面に戻る', en: 'Back to Start Screen' },
 
   // ----- 移動記録 -----
@@ -336,6 +337,47 @@ const DICT = {
     ja: 'しばらく操作が無かったため、カメラを閉じました',
     en: 'The camera was closed because it was not used for a while'
   },
+
+  // ----- 場所を検索(photo-explore.js。写真の一覧と、撮影地点までの矢印・方角・距離) -----
+  // 見出し・虫眼鏡のボタンの名前は、表示設定パネルのトグル(map.toggleExplore)と同じにする
+  'explore.title': { ja: '場所を検索', en: 'Find Places' },
+  'explore.closeAria': { ja: '「場所を検索」を閉じる', en: 'Close "Find Places"' },
+  'explore.ariaList': { ja: '写真の一覧', en: 'Photo list' },
+  'explore.empty': { ja: '写真がありません', en: 'No photos' },
+  // 写真が1枚も無いときに虫眼鏡のボタンを押した(開かずに知らせる)
+  'explore.noPhotos': {
+    ja: '写真がありません。≡ のメニューの「写真を撮影」をオンにして、写真を撮るか「KMZ読み込み」で読み込んでください。',
+    en: 'No photos. Turn on "Take Photos" in the ≡ menu, then take photos or use "Import KMZ".'
+  },
+  // たたんだ一覧(バー)の読み上げ。{label} は「③ 写真3」の形
+  'explore.barAria': {
+    ja: '{label}へ案内中。押すと写真の一覧を開きます',
+    en: 'Guiding you to {label}. Press to open the photo list.'
+  },
+  // 方角と距離の代わりに出す知らせ
+  'explore.markerOff': {
+    ja: '「現在地点をマーカー表示」がオフのため、現在地を続けて取得できません。≡ のメニューでオンにすると、方角と距離を表示します。',
+    en: '"Show Current Location Marker" is off, so your location is not being updated. Turn it on in the ≡ menu to see the direction and distance.'
+  },
+  'explore.waiting': { ja: '現在地を調べています…', en: 'Finding your location…' },
+  'explore.unknown': { ja: '現在地が分かりません。', en: 'Your location is not available.' },
+  // 方角と距離。直線距離だと分かる書き方にする(道に沿った距離ではない)。
+  // 幅 320px の画面でも1行に収まるよう、英語の方位は略号(N・NE…)にする。
+  // 約 0m のときは向きが決まらないので方角を出さない(infoNoDirection)
+  'explore.info': { ja: '{direction}　直線で約 {distance}', en: '{direction} · {distance} (straight line)' },
+  'explore.infoNoDirection': { ja: '直線で約 {distance}', en: '{distance} (straight line)' },
+  'explore.meters': { ja: '{m}m', en: '{m} m' },
+  'explore.kilometers': { ja: '{km}km', en: '{km} km' },
+  'explore.dirN': { ja: '北', en: 'N' },
+  'explore.dirNE': { ja: '北東', en: 'NE' },
+  'explore.dirE': { ja: '東', en: 'E' },
+  'explore.dirSE': { ja: '南東', en: 'SE' },
+  'explore.dirS': { ja: '南', en: 'S' },
+  'explore.dirSW': { ja: '南西', en: 'SW' },
+  'explore.dirW': { ja: '西', en: 'W' },
+  'explore.dirNW': { ja: '北西', en: 'NW' },
+  // 撮影地点まで約 30m 以内に入った(案内1回につき1度だけ)。{label} は「③ 写真3」の形
+  'explore.arrived': { ja: '近くに着きました（{label}）', en: 'You are near {label}' },
 
   // ----- 位置情報 -----
   'geo.notSupported': { ja: 'この端末は位置情報に対応していません', en: 'This device does not support geolocation' },
@@ -608,6 +650,14 @@ const DICT = {
         '「写真を撮影」をオンにするとカメラが出ます。読み込み・出力・クリアは経路(GPX)と写真(KMZ)で別々です。',
     en: 'Turn on "Record Track" and ▶ appears left of ≡. Press ▶ to record; tap ■ several times in a row, or press and hold it, to stop. Recording continues on the start screen.\n' +
         'Turn on "Take Photos" for the camera. Tracks (GPX) and photos (KMZ) each have their own Import, Export and Clear.'
+  },
+
+  'guide.mapExploreTitle': { ja: '場所を検索', en: 'Find Places' },
+  'guide.mapExploreBody': {
+    ja: '「場所を検索」をオンにすると、画面上部に虫眼鏡のボタンが出ます。押すと写真の一覧が出ます。\n' +
+        '写真を選ぶと、撮影した場所までの方角と直線距離を、現在地からの矢印で示します(「現在地点をマーカー表示」をオンにしておきます)。',
+    en: 'Turn on "Find Places" and a magnifier button appears at the top. Press it to see a list of your photos.\n' +
+        'Choose a photo and an arrow from your location shows the direction and straight-line distance to where it was taken (keep "Show Current Location Marker" on).'
   },
 
   'guide.mapFinishTitle': { ja: 'マーカーの設定と、画面の戻り方', en: 'Marker Settings and Going Back' },

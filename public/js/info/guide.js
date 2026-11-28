@@ -107,6 +107,13 @@ const GUIDE_STEPS = [
     ]
   },
   {
+    // 場所を検索(写真の撮影地点への案内)。トグルだけを指す(虫眼鏡のボタンはトグル ON のときだけ出るため)
+    key: 'mapExplore',
+    view: 'map',
+    panel: true,
+    targets: ['[data-guide="panelExplore"]']
+  },
+  {
     key: 'mapFinish',
     view: 'map',
     panel: true,

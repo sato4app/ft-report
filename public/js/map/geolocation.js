@@ -5,6 +5,8 @@
 // - 移動経路の記録の開始・停止(startTrackRecording / stopTrackRecording)。記録には現在地の監視が
 //   要るため、監視の制御とあわせてここから行う。経路のデータと描画は track.js が持つ。
 // - 写真の撮影地点(撮影時の位置の取り直し)。写真そのものは photos.js が持ち、経路とは結び付けない。
+// - 現在地を使うほかの機能(場所を検索。photo-explore.js)への、位置と状態の知らせ(addLocationListener)。
+//   現在地の監視はここだけが行い、ほかの機能は自分で監視しない(監視は1つで済む)。
 import * as L from 'leaflet';
 import { getMap, ensureMapSize, msSinceMapInteraction, setOnMapInteractionEnd } from './map.js';
 import { isOneFingerZooming, setOneFingerZoomAroundCenter } from './one-finger-zoom.js';
@@ -52,9 +54,63 @@ const LAST_FIX_MAX_AGE_MS = 30 * 1000;
 // 位置情報エラーの通知コールバックと、監視中に通知済みかのフラグ(連続エラーの抑制)
 let locationErrorCb = null;
 let locationErrorReported = false;
+// 位置情報を使えないか(利用が許可されていない・端末が対応していない。→ isLocationUnavailable)
+let locationUnavailable = false;
+// 位置の受け手(addLocationListener)
+const locationListeners = new Set();
 
 // 記録中の経路の三角は、スタイルを変えたとき直近の現在地へ置き直す(track.js)
 setLiveLatLngSource(() => lastKnownLatLng);
+
+// ===== 現在地を使うほかの機能への知らせ =====
+// 受け手は何個でも登録できる。登録を外す関数を返す。受け手 fn(event) の event.type は次のどれか:
+//   'fix'    … 位置が届いた(event.latlng = [lat, lng])。監視・現在地点表示ボタン・撮影時の取り直しのどれでも届く
+//   'status' … 「現在地点をマーカー表示」が切り替わった・位置情報を使えなくなった。
+//              今の状態は isCurrentMarkerVisible() / isLocationUnavailable() / getFreshLatLng() で調べる
+// 監視の開始・停止はここ(needLocationWatch)が決める。受け手は監視を頼まない
+// (「現在地点をマーカー表示」が ON なら、マップ画面では監視している)。
+export function addLocationListener(fn) {
+  locationListeners.add(fn);
+  return () => locationListeners.delete(fn);
+}
+
+function emitLocation(event) {
+  for (const fn of [...locationListeners]) {
+    try {
+      fn(event);
+    } catch (err) {
+      console.error('[geolocation] 位置の受け手の処理で問題が発生しました:', err);
+    }
+  }
+}
+
+// 直近の位置。「現在地」として使えるほど新しい(isLastFixFresh)ときだけ [lat, lng] を返し、それ以外は null
+export function getFreshLatLng() {
+  return isLastFixFresh() ? lastKnownLatLng.slice() : null;
+}
+
+// 「現在地点をマーカー表示」が ON か
+export function isCurrentMarkerVisible() {
+  return showCurrentMarker;
+}
+
+// 位置情報を使えないか(利用が許可されていない・端末が対応していない)。
+// 一時的に取れないとき(時間切れ・電波が弱いなど)は含めない(監視は続き、次の位置が届く)。
+// 監視を始め直したとき・位置が届いたときに降ろす(許可を後から変えた場合に備える)
+export function isLocationUnavailable() {
+  return locationUnavailable;
+}
+
+function setLocationUnavailable(on) {
+  if (locationUnavailable === on) return;
+  locationUnavailable = on;
+  emitLocation({ type: 'status' });
+}
+
+// 位置情報のエラーが「利用が許可されていない」か(GeolocationPositionError.PERMISSION_DENIED = 1)
+function isPermissionDenied(err) {
+  return err?.code === 1;
+}
 
 // ===== 移動経路の記録の開始・停止 =====
 // 移動記録を開始する。1回の記録が1本の経路になる。
@@ -186,12 +242,17 @@ function startGeoWatch() {
   if (!getMap() || geoWatchId != null) return; // 既に監視中
   if (!('geolocation' in navigator)) {
     reportLocationError(t('geo.notSupported'));
+    setLocationUnavailable(true);
     return;
   }
   locationErrorReported = false;
+  setLocationUnavailable(false);
   geoWatchId = navigator.geolocation.watchPosition(
     onGeoSuccess,
-    (err) => reportLocationError(t('geo.fetchFailed', { message: err.message })),
+    (err) => {
+      if (isPermissionDenied(err)) setLocationUnavailable(true);
+      reportLocationError(t('geo.fetchFailed', { message: err.message }));
+    },
     GEO_OPTIONS
   );
 }
@@ -224,12 +285,15 @@ function fixTimeOf(pos) {
   return ts;
 }
 
-// 受け取った測位を直近の位置として覚える
+// 受け取った測位を直近の位置として覚え、受け手(addLocationListener)に知らせる。
+// 位置が届いたので、位置情報を使えない状態は降ろす(知らせは 'fix' だけにする)
 function rememberFix(pos, fixTimeMs) {
   lastKnownLatLng = [pos.coords.latitude, pos.coords.longitude];
   lastKnownAtMs = Date.now();
   lastKnownAccuracyM = pos.coords.accuracy;
   lastFixTimeMs = Math.max(lastFixTimeMs, fixTimeMs);
+  locationUnavailable = false;
+  emitLocation({ type: 'fix', latlng: lastKnownLatLng.slice() });
 }
 
 // 位置取得成功時の更新処理(マーカー表示・記録・地図追従)
@@ -406,6 +470,7 @@ export function showCurrentLocationSpot({ onEnd } = {}) {
   }
   if (!('geolocation' in navigator)) {
     reportLocationError(t('geo.notSupported'));
+    setLocationUnavailable(true);
     endCurrentLocationSpot();
     return;
   }
@@ -415,6 +480,7 @@ export function showCurrentLocationSpot({ onEnd } = {}) {
       renderCurrentLocationSpot(lastKnownLatLng);
     },
     (err) => {
+      if (isPermissionDenied(err)) setLocationUnavailable(true);
       reportLocationError(t('geo.fetchFailed', { message: err.message }));
       endCurrentLocationSpot();
     },
@@ -495,6 +561,7 @@ export function setLocationActiveForMapView(active, { onError } = {}) {
 
 // 「現在地点をマーカー表示」トグル。OFF で青丸を消す。ON にした直後は、直近の位置が
 // 新しければ(isLastFixFresh)即座に再表示する。地図追従の前提でもある(shouldFollowMap)。
+// 切り替えたことは受け手に 'status' で知らせる(場所を検索は、OFF の間は方角と距離を出さない)
 export function setCurrentMarkerVisible(on) {
   showCurrentMarker = on;
   if (!on) {
@@ -511,6 +578,7 @@ export function setCurrentMarkerVisible(on) {
     }
   }
   refreshLocationWatch();
+  emitLocation({ type: 'status' });
 }
 
 // 「現在地点は中央に表示」トグル。ON にした直後は、直近の位置が新しければ(isLastFixFresh)

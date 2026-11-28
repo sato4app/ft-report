@@ -12,6 +12,7 @@ import { getMap, fitMapToLatLngs } from '../map/map.js';
 import { buildMarkerIcon } from '../map/marker-icons.js';
 import { saveLatestTrack, loadLatestTrack, clearLatestTrack } from '../common/db.js';
 import { t } from '../common/i18n.js';
+import { bearingDegrees } from '../common/utils.js';
 
 // 「移動した」の判定: 直近の記録点から 20m 以上離れたか、1 分以上経過した場合に記録
 const TRACK_MIN_DISTANCE_M = 20;
@@ -118,18 +119,8 @@ function addStartMarker(track, latlng) {
 }
 
 // ===== 終了点(進行方向の三角)と現在地点までの線 =====
-// 2点間の方位角(度・北=0、時計回り)。三角マーカーの回転に用いる。
-function bearingDeg(a, b) {
-  const toRad = (d) => d * Math.PI / 180;
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
-
-// 進行方向: 過去最大3点(記録点)の平均座標から、現在位置へ向かう方位。
+// 進行方向: 過去最大3点(記録点)の平均座標から、現在位置へ向かう方位(utils.js の bearingDegrees)。
+// 三角マーカーの回転に用いる。
 // current は現在位置(記録中はライブ現在地、停止後は最終記録点)。
 // 方向が定まらない(平均と現在が同じ等)場合は 0(北・上向き)を返す。
 function computeHeading(latlngs, current) {
@@ -142,7 +133,7 @@ function computeHeading(latlngs, current) {
   for (const p of recent) { lat += p.lat; lng += p.lng; }
   const avg = { lat: lat / k, lng: lng / k };
   if (Math.abs(avg.lat - current.lat) < 1e-9 && Math.abs(avg.lng - current.lng) < 1e-9) return 0;
-  return bearingDeg(avg, current);
+  return bearingDegrees(avg, current);
 }
 
 // 経路の終了点マーカー(三角)を配置し、進行方向に回転させる。

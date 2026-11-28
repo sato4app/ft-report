@@ -4,7 +4,7 @@
 // - app-shell-{日付}.{連番}: アプリシェル(HTML/CSS/JS、CDN、アイコン)。取得戦略は handleShellRequest。
 // 公開API(/api/*)は横取りしない。取得とキャッシュはアプリ側(published-data.js)が version を見て行う。
 
-const SHELL_CACHE = 'app-shell-2026-11-22.1';
+const SHELL_CACHE = 'app-shell-2026-11-28.1';
 const TILE_CACHE_PREFIX = 'gsi-';
 const SHELL_CACHE_PREFIX = 'app-shell-';
 
@@ -62,6 +62,7 @@ const SHELL_LOCAL_PATHS = [
   './js/photo/photo-ui.js',
   './js/photo/photo-view.js',
   './js/photo/photo-zoom.js',
+  './js/photo/photo-explore.js',
   './js/photo/camera.js',
   './js/photo/kmz.js',
   // 配信データ・オフライン地図・アプリの更新

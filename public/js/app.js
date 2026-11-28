@@ -32,6 +32,7 @@
 //     photo-ui.js       … 写真の操作(撮影・KMZ 読み込み・出力・クリア)
 //     photo-view.js     … 写真の表示(名前の変更)・写真の一覧
 //     photo-zoom.js     … 写真の拡大表示
+//     photo-explore.js  … 場所を検索(写真の一覧と、撮影地点までの矢印・方角・距離)
 //     camera.js         … アプリ内カメラ
 //     kmz.js            … KMZ の組み立て・解析
 //   data/ … 配信データ・オフライン地図・アプリの更新
@@ -86,6 +87,7 @@ import {
   bindPhotoEvents, applyPhotoControlsForView, updatePhotoPanel, restorePhotosFromStorage
 } from './photo/photo-ui.js';
 import { bindPhotoViewEvents } from './photo/photo-view.js';
+import { bindExploreEvents, applyExploreControlsForView } from './photo/photo-explore.js';
 
 // ===== 状態 =====
 let currentView = 'home';
@@ -329,6 +331,9 @@ function bindEvents() {
   bindTrackEvents();
   bindPhotoEvents();
   bindPhotoViewEvents();
+  // 場所を検索のトグルと虫眼鏡のボタン。どの画面から開いてもハイキングマップ画面に切り替えるため、
+  // その操作だけを関数で渡す(photo-explore.js から app.js を import すると相互参照になる)
+  bindExploreEvents({ showMapView: () => showView('map') });
   // 表示設定パネルのトグルは切り替えるたびに保存する(次回起動時に restoreMapToggles で戻す)。
   // 各トグルの処理(上)より後に登録し、取り消しで checked を戻した場合も最終の状態を保存する
   for (const input of mapToggleInputs()) on(input, 'change', saveMapToggles);
@@ -428,6 +433,8 @@ function showView(name) {
     applyTrackControlsForView(true);
     // 写真を撮影トグルの状態に応じてカメラボタンの表示を更新
     applyPhotoControlsForView(true);
+    // 場所を検索トグルの状態に応じて虫眼鏡のボタンの表示を更新(開いている場所を検索はそのまま)
+    applyExploreControlsForView(true);
     // 時刻表示は normalizeMapChrome() でトグルの状態に従って反映済み
     requestAnimationFrame(() => resizeMap());
   } else if (name === 'home') {
@@ -440,6 +447,8 @@ function showView(name) {
     // 記録操作ボタン群・カメラボタンはマップ画面のUIなので隠す(記録状態自体は保持する)
     applyTrackControlsForView(false);
     applyPhotoControlsForView(false);
+    // 場所を検索はハイキングマップ画面のものなので終える(× と同じ。一覧・番号の印・矢印を消す)
+    applyExploreControlsForView(false);
     // マップ以外では時刻表示を停止・非表示(トグル状態は保持)
     setClockVisible(false);
     requestAnimationFrame(() => resizeMap());

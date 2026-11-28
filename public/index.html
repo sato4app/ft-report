@@ -88,11 +88,16 @@
   <section class="view view-map" id="viewMap" hidden>
     <button type="button" class="btn-float btn-menu-float" id="btnMapLayers" data-guide="mapMenuBtn" aria-label="表示設定" data-i18n-aria="map.ariaLayers">≡</button>
     <!-- メニューボタン(≡)の左に並べる上部操作群。右詰めで、右から順に
-         記録開始/停止ボタン → カメラボタン → 時刻表示。各要素は個別に hidden を切り替え、
+         記録開始/停止ボタン → カメラボタン → 虫眼鏡のボタン → 時刻表示。各要素は個別に hidden を切り替え、
          表示中のものだけがメニューボタンに隣接する(非表示分の隙間はできない)。 -->
     <div class="map-top-actions" id="mapTopActions">
       <!-- 時刻表示: 「時刻を表示」トグル ON のときのみ表示 -->
       <div class="map-clock" id="mapClock" hidden role="status" aria-live="off"></div>
+      <!-- 虫眼鏡のボタン(場所を検索)。「場所を検索」ON のとき表示する。押すたびに写真の一覧を開く・閉じる
+           (photo-explore.js。開いている間は aria-pressed="true" と is-active) -->
+      <button type="button" class="btn-float btn-track-action btn-explore" id="btnExplore" aria-label="場所を検索" title="場所を検索" aria-pressed="false" data-i18n-aria="explore.title" data-i18n-title="explore.title" hidden>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15.4 15.4l5.6 5.6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+      </button>
       <!-- カメラボタン(写真を撮る)。「写真を撮影」ON のとき表示する(移動経路の記録とは無関係)。
            アプリ内カメラ(getUserMedia)が使えない端末では出さない -->
       <button type="button" class="btn-float btn-track-action btn-track-camera" id="btnPhotoCamera" aria-label="写真を撮る" title="写真を撮る" data-i18n-aria="photo.take" data-i18n-title="photo.take" hidden>
@@ -111,6 +116,23 @@
           <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/>
         </svg>
       </button>
+    </div>
+    <!-- 場所を検索(photo-explore.js。仕様は docs/funcspec-202611.md の 4.12)。
+         写真の一覧(広げた状態)と、写真を押した後のたたんだ一覧(バー)・方角と距離。
+         一覧の行・バー・方角と距離の文言は photo-explore.js が入れる -->
+    <section class="explore-panel" id="explorePanel" aria-labelledby="exploreTitle" hidden>
+      <header class="explore-head">
+        <h2 id="exploreTitle" data-i18n="explore.title">場所を検索</h2>
+        <button type="button" class="explore-close" id="btnExploreClose" aria-label="「場所を検索」を閉じる" title="閉じる" data-i18n-aria="explore.closeAria" data-i18n-title="common.close">×</button>
+      </header>
+      <ol class="explore-list" id="exploreList" aria-label="写真の一覧" data-i18n-aria="explore.ariaList"></ol>
+      <p class="explore-empty" id="exploreEmpty" data-i18n="explore.empty" hidden>写真がありません</p>
+    </section>
+    <div class="explore-stack" id="exploreStack" hidden>
+      <button type="button" class="explore-bar" id="exploreBar" aria-expanded="false"></button>
+      <div class="explore-info" id="exploreInfo" role="status" aria-live="polite" hidden>
+        <div class="explore-info-text" id="exploreInfoText"></div>
+      </div>
     </div>
     <div class="map-layer-panel" id="mapLayerPanel" hidden>
       <!-- 画面に重ねて出す表示の切替。どちらもマップ画面にしか効かないため、
@@ -177,6 +199,13 @@
       </div>
       <!-- 写真の「読み込み」で開くファイル選択(KMZ)。accept を付けない理由は GPX と同じ -->
       <input type="file" id="photoImportInput" hidden />
+      <!-- 場所を検索: ON で上部に虫眼鏡のボタンを出す(押すと写真の一覧を開き、撮影地点へ案内する)。
+           OFF にすると、開いている一覧・矢印も閉じる。写真は消さない -->
+      <label class="toggle toggle-switch" data-guide="panelExplore">
+        <input type="checkbox" id="toggleExplore" />
+        <span class="toggle-slider" aria-hidden="true"></span>
+        <span class="toggle-text" data-i18n="map.toggleExplore">場所を検索</span>
+      </label>
       <hr class="panel-divider" />
       <!-- マーカーの設定(マーカーの設定モーダルを開く)。マーカーはマップ画面でしか見えないため、
            起動画面の「情報・言語/Info & Language」ではなくここからだけ開く -->

@@ -2,6 +2,7 @@
 // - 写真はアプリの中(IndexedDB の photos ストア)にだけ保存する。端末の写真アプリには残らない。
 // - 写真は移動経路とは別に扱う。経路の記録・読み込み・クリアでは触らず、写真の「クリア」でだけ消す。
 // - 地図には撮影地点にカメラの印を出し、押すと写真の表示(photo-view.js。名前の変更)を開く。
+//   場所を検索(photo-explore.js)の間は、一覧に載った写真の印を地図から外す(setHiddenPhotoMarkers)。
 // 撮影は camera.js、KMZ の出力・読み込みは kmz.js、画面の操作は photo-ui.js / photo-view.js が担う。
 import * as L from 'leaflet';
 import { getMap, fitMapToLatLngs } from '../map/map.js';
@@ -25,10 +26,30 @@ import { drawToJpeg } from '../common/utils.js';
 let photos = [];
 let onPhotoClick = null;    // 印が押されたとき(写真の表示を開く)
 let onPhotosChanged = null; // 枚数・出力済みかどうかが変わったとき(パネルの表示を更新する)
+const removedListeners = new Set();   // 写真が消えたときの受け手(addPhotosRemovedListener)
 
 export function setPhotoHandlers({ onClick, onChanged } = {}) {
   onPhotoClick = onClick || null;
   onPhotosChanged = onChanged || null;
+}
+
+// 写真が消えたとき(1枚の削除・クリア)に知らせる。受け手は何個でも登録できる。登録を外す関数を返す。
+// 受け手 fn(ids) の ids は消えた写真の id の配列。写真の一覧から外した後に呼ぶ(getPhoto(id) は null を返す)。
+// 場所を検索(photo-explore.js)が、一覧に載せた写真が消えたことを知るのに使う
+export function addPhotosRemovedListener(fn) {
+  removedListeners.add(fn);
+  return () => removedListeners.delete(fn);
+}
+
+function emitPhotosRemoved(ids) {
+  if (ids.length === 0) return;
+  for (const fn of [...removedListeners]) {
+    try {
+      fn(ids);
+    } catch (err) {
+      console.error('[photos] 写真が消えたときの受け手の処理で問題が発生しました:', err);
+    }
+  }
 }
 
 export function getPhotos() {
@@ -82,18 +103,38 @@ function buildPhotoIcon() {
   });
 }
 
-// 撮影地点の印の見た目を変え、表示中の印にも反映する
+// 撮影地点の印の見た目を変え、表示中の印にも反映する。
+// 地図から外している印(setHiddenPhotoMarkers)は外したまま、見た目だけ変える(地図に戻したときに新しい見た目で出る)
 export function setPhotoStyle(style) {
   photoStyle = style;
   for (const photo of photos) photo.marker?.setIcon(buildPhotoIcon());
+}
+
+// カメラの印を地図から外しておく写真の id(場所を検索の一覧に載っている写真。番号の印に置き換えるため)
+let hiddenMarkerIds = new Set();
+
+// 指定した写真のカメラの印を地図から外す。空・null を渡すと全部の印を地図に戻す。
+// 外した印は作り直さずに持っておくので、「マーカーの設定」で見た目を変えても外したままになる。
+// 後から加わった写真(撮影・読み込み)は、指定に入っていないので印を出す
+export function setHiddenPhotoMarkers(ids) {
+  hiddenMarkerIds = new Set(ids || []);
+  for (const photo of photos) syncMarkerOnMap(photo);
+}
+
+function syncMarkerOnMap(photo) {
+  const map = getMap();
+  if (!map || !photo.marker) return;
+  const hidden = hiddenMarkerIds.has(photo.id);
+  if (hidden && map.hasLayer(photo.marker)) map.removeLayer(photo.marker);
+  else if (!hidden && !map.hasLayer(photo.marker)) photo.marker.addTo(map);
 }
 
 function addMarker(photo) {
   const map = getMap();
   if (!map) return;
   photo.marker = L.marker([photo.lat, photo.lng], { icon: buildPhotoIcon(), title: photo.name })
-    .addTo(map)
     .on('click', () => onPhotoClick?.(photo.id));
+  syncMarkerOnMap(photo);
 }
 
 function removeMarker(photo) {
@@ -145,6 +186,8 @@ export async function renamePhoto(id, name) {
   const photo = getPhoto(id);
   if (!photo) return;
   photo.name = name;
+  // 印の title は、見た目を変えて作り直したとき・地図に戻したときにも新しい名前になるよう options も直す
+  if (photo.marker) photo.marker.options.title = name;
   photo.marker?.getElement()?.setAttribute('title', name);
   setUnexported(true);
   onPhotosChanged?.();
@@ -162,11 +205,13 @@ export async function deletePhoto(id) {
   releaseThumb(id);
   if (photos.length === 0) setUnexported(false);
   onPhotosChanged?.();
+  emitPhotosRemoved([id]);
   await deletePhotoRecord(id);
 }
 
 // 全写真を消す(写真の「クリア」と、クリアを選んだ撮影・読み込みから photo-ui.js が呼ぶ)
 export async function clearPhotos() {
+  const ids = photos.map((p) => p.id);
   for (const photo of photos) {
     removeMarker(photo);
     releaseThumb(photo.id);
@@ -174,6 +219,7 @@ export async function clearPhotos() {
   photos = [];
   setUnexported(false);
   onPhotosChanged?.();
+  emitPhotosRemoved(ids);
   try { await clearPhotoRecords(); } catch { /* 保存を消せなくても表示は消す */ }
 }
 
