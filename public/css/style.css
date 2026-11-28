@@ -17,7 +17,7 @@
   /* 場所を検索(place-search.js)の色。ft-report の探索・案内と同じオレンジ(写真の撮影地点の印
      (既定は紺 #000080)・現在地の青丸と見分けやすい)。
      下流のアプリ(ft-report)が自分の CSS で上書きして色を変えられるよう、変数にしておく */
-  --explore-accent-color: #ea580c;          /* 虫眼鏡のボタンの押した状態の地 */
+  --explore-accent-color: #2c7a3d;          /* 虫眼鏡のボタンの押した状態の地(アプリの基調色・検索の見出しと同じ緑) */
   --explore-arrow-color: #ef6c00;           /* 矢印の線 */
   --explore-arrow-casing-color: #fff;       /* 矢印の線と矢じりの縁 */
   --explore-arrow-head-color: #ef6c00;      /* 矢じり */

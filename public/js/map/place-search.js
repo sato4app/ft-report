@@ -191,6 +191,23 @@ function normalizeForSearch(s) {
   return String(s ?? '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
 }
 
+// ID の書き方の違いを許すための形(normalizeForSearch した文字に使う)。「F-01」を「f1」「f01」「f-1」と打っても
+// 当たるようにする。名称・写真の名前にも同じく使う(この形での一致は、ふつうの一致に足すだけ)。
+// - withoutHyphens: ハイフンの類(各種ダッシュ・下線と、日本語入力のまま英数字の隣で打った「ー」)を除く。
+//   打った文字と対象の両方に使う
+// - withoutLeadingZeros: 数字の頭の 0 を除く(f01 → f1)。対象の側にだけ使う。打った文字の 0 は残すので、
+//   「f01」は F-01 に当たり、F-11 には当たらない(「f1」は F-01 と、f1 で始まる F-11〜 に当たる)
+function withoutHyphens(s) {
+  return s
+    .replace(/([a-z0-9])ー/g, '$1')
+    .replace(/ー([a-z0-9])/g, '$1')
+    .replace(/[-‐‑‒–—―−_]/g, '');
+}
+
+function withoutLeadingZeros(s) {
+  return s.replace(/(^|\D)0+(?=\d)/g, '$1');
+}
+
 function scheduleSearch() {
   if (!ex) return;
   clearTimeout(ex.searchTimer);
@@ -210,10 +227,21 @@ function runSearch() {
   renderList();
 }
 
-// 部分一致で探す。緊急ポイントは ID・名称・英語名、ルート・スポットは名称・英語名、写真は名前を比べる
+// 部分一致で探す。緊急ポイントは ID・名称・英語名、ルート・スポットは名称・英語名、写真は名前を比べる。
+// ID の書き方の違い(F-01 と f1 など)も許す(→ withoutHyphens・withoutLeadingZeros)
 // (ルート・スポットの ID は比べない)。並びは地図データ(緊急ポイント・ルート・スポット)の後に写真
 function findPlaces(query) {
-  const hit = (...texts) => texts.some((s) => s && normalizeForSearch(s).includes(query));
+  // ふつうの形で当たるか、ID の書き方の違いを許す形(withoutHyphens・withoutLeadingZeros)で当たれば一致とする。
+  // ハイフンを除くと空になる入力(「-」だけなど)は、ふつうの形だけで比べる(空の文字は何にでも当たるため)
+  const loose = withoutHyphens(query);
+  const hit = (...texts) => texts.some((s) => {
+    if (!s) return false;
+    const text = normalizeForSearch(s);
+    if (text.includes(query)) return true;
+    if (!loose) return false;
+    const dehyphened = withoutHyphens(text);
+    return dehyphened.includes(loose) || withoutLeadingZeros(dehyphened).includes(loose);
+  });
   const found = [];
   getSearchablePlaces().forEach((p, i) => {
     if (!hit(p.id, p.name, p.englishName)) return;
