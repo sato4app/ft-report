@@ -29,6 +29,9 @@ export const GUIDE_SEEN_KEY = 'minoh-hiking.guide-seen';
 // マップのメニュー(表示設定パネル)のトグルの状態。{ <トグルの id>: true/false } の JSON。
 // 保存が無い・読めないトグルは HTML の初期値で始める。
 export const MAP_TOGGLES_KEY = 'minoh-hiking.map-toggles';
+// 場所を検索で選んだ場所の履歴(新しい順・5 件まで。place-search.js)。各要素は
+// { key, kind, id, name, englishName, latlngs: [[lat, lng], ...], photoId } の JSON(選んだときの写し)
+export const EXPLORE_HISTORY_KEY = 'minoh-hiking.explore-history';
 
 // ===== sessionStorage キー =====
 // アプリ更新による再読み込みの前に控える更新先の版。SW の切替が未完了で版が不一致に

@@ -90,11 +90,16 @@
   <section class="view view-map" id="viewMap" hidden>
     <button type="button" class="btn-float btn-menu-float" id="btnMapLayers" data-guide="mapMenuBtn" aria-label="表示設定" data-i18n-aria="map.ariaLayers">≡</button>
     <!-- メニューボタン(≡)の左に並べる上部操作群。右詰めで、右から順に
-         記録開始/停止ボタン → カメラボタン → 時刻表示。各要素は個別に hidden を切り替え、
+         記録開始/停止ボタン → カメラボタン → 虫眼鏡のボタン → 時刻表示。各要素は個別に hidden を切り替え、
          表示中のものだけがメニューボタンに隣接する(非表示分の隙間はできない)。 -->
     <div class="map-top-actions" id="mapTopActions">
       <!-- 時刻表示: 「時刻を表示」トグル ON のときのみ表示 -->
       <div class="map-clock" id="mapClock" hidden role="status" aria-live="off"></div>
+      <!-- 虫眼鏡のボタン(場所を検索)。「場所を検索」ON のとき表示する。押すたびに入力欄と検索結果を開く・閉じる
+           (place-search.js。開いている間は aria-pressed="true" と is-active) -->
+      <button type="button" class="btn-float btn-track-action btn-explore" id="btnExplore" aria-label="場所を検索" title="場所を検索" aria-pressed="false" data-i18n-aria="explore.title" data-i18n-title="explore.title" hidden>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15.4 15.4l5.6 5.6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+      </button>
       <!-- カメラボタン(写真を撮る)。「写真を撮影」ON のとき表示する(移動経路の記録とは無関係)。
            アプリ内カメラ(getUserMedia)が使えない端末では出さない -->
       <button type="button" class="btn-float btn-track-action btn-track-camera" id="btnPhotoCamera" aria-label="写真を撮る" title="写真を撮る" data-i18n-aria="photo.take" data-i18n-title="photo.take" hidden>
@@ -114,6 +119,41 @@
         </svg>
       </button>
     </div>
+    <!-- 場所を検索(place-search.js。仕様は docs/funcspec-202611.md の 4.12)。
+         入力欄と検索結果の一覧(広げた状態)と、結果を押した後のたたんだ一覧(バー)・方角と距離。
+         入力欄の placeholder・一覧の上の説明・一覧の行・バー・方角と距離の文言は place-search.js が入れる。
+         マップ画面ではモーダルの外の入力欄からフォーカスを外すが、この入力欄だけは除く(app.js の focusin) -->
+    <section class="explore-panel" id="explorePanel" aria-labelledby="exploreTitle" hidden>
+      <!-- 見出し: 枠を広げる(V)・狭める(^)ボタン(向きは CSS で回す。aria-label・title は place-search.js が状態に合わせて入れる)と、
+           閉じるボタン(×。現在地からの矢印も消す) -->
+      <header class="explore-head">
+        <h2 id="exploreTitle" data-i18n="explore.title">場所を検索</h2>
+        <button type="button" class="explore-size" id="btnExploreSize" aria-controls="exploreBody" aria-expanded="true" aria-label="枠を狭める" title="枠を狭める">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="explore-close" id="btnExploreClose" aria-label="「場所を検索」を閉じる" title="閉じる" data-i18n-aria="explore.closeAria" data-i18n-title="common.close">×</button>
+      </header>
+      <!-- 枠を広げた状態(開いたときの既定)の中身: 入力欄・結果の一覧・選んだ場所の履歴 -->
+      <div class="explore-body" id="exploreBody">
+        <div class="explore-search">
+          <input type="search" class="explore-input" id="exploreInput" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="検索する名称" data-i18n-aria="explore.inputAria" />
+        </div>
+        <p class="explore-note" id="exploreNote" role="status" aria-live="polite"></p>
+        <!-- 結果の一覧と、その下の選んだ場所の履歴(5 件まで。端末に保存)。2 つをまとめてスクロールする -->
+        <div class="explore-scroll" id="exploreScroll">
+          <ol class="explore-list" id="exploreList" aria-label="検索結果" data-i18n-aria="explore.ariaList"></ol>
+          <section class="explore-history" id="exploreHistory" aria-labelledby="exploreHistoryTitle" hidden>
+            <h3 class="explore-history-title" id="exploreHistoryTitle" data-i18n="explore.historyTitle">最近選んだ場所</h3>
+            <ol class="explore-list" id="exploreHistoryList"></ol>
+          </section>
+        </div>
+      </div>
+      <!-- 枠を狭めた状態の中身: 選んだ場所の番号と名前、その下に方角と距離(選んでいなければ出さない)。押すと枠を広げる -->
+      <button type="button" class="explore-current" id="exploreCurrent" hidden>
+        <span class="explore-current-name" id="exploreCurrentName"></span>
+        <span class="explore-info-text" id="exploreInfoText" role="status" aria-live="polite"></span>
+      </button>
+    </section>
     <div class="map-layer-panel" id="mapLayerPanel" hidden>
       <!-- 画面に重ねて出す表示の切替。どちらもマップ画面にしか効かないため、
            起動画面の「情報・言語/Info & Language」ではなくここに置く -->
@@ -179,6 +219,13 @@
       </div>
       <!-- 写真の「読み込み」で開くファイル選択(KMZ)。accept を付けない理由は GPX と同じ -->
       <input type="file" id="photoImportInput" hidden />
+      <!-- 場所を検索: ON で上部に虫眼鏡のボタンを出す(押すと入力欄が開き、緊急ポイント・ルート・スポット・写真を
+           名称で探して、選んだ場所へ案内する)。OFF にすると、開いている検索・矢印も閉じる -->
+      <label class="toggle toggle-switch" data-guide="panelExplore">
+        <input type="checkbox" id="toggleExplore" />
+        <span class="toggle-slider" aria-hidden="true"></span>
+        <span class="toggle-text" data-i18n="map.toggleExplore">場所を検索</span>
+      </label>
       <hr class="panel-divider" />
       <!-- マーカーの設定(マーカーの設定モーダルを開く)。マーカーはマップ画面でしか見えないため、
            起動画面の「情報・言語/Info & Language」ではなくここからだけ開く -->
@@ -337,9 +384,10 @@
           </button>
         </div>
         <p class="modal-note photo-view-meta" id="photoViewMeta"></p>
-        <div class="button-group button-group-row">
+        <!-- 「追加撮影」は差し替えではなく写真を足すことが分かる名前にし、文字が長いぶん幅を広く取る(style.css) -->
+        <div class="button-group button-group-row photo-view-actions">
           <button type="button" class="btn btn-primary" id="btnPhotoViewList" data-i18n="photo.list">一覧</button>
-          <button type="button" class="btn btn-primary" id="btnPhotoViewShoot" data-i18n="photo.shoot" hidden>撮影</button>
+          <button type="button" class="btn btn-primary" id="btnPhotoViewShoot" data-i18n="photo.shoot" hidden>追加撮影</button>
           <button type="button" class="btn btn-neutral" data-close-modal data-i18n="common.back">戻る</button>
         </div>
       </div>

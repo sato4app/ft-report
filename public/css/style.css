@@ -13,6 +13,16 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
+
+  /* 場所を検索(place-search.js)の色。ft-report の探索・案内と同じオレンジ(写真の撮影地点の印
+     (既定は紺 #000080)・現在地の青丸と見分けやすい)。
+     下流のアプリ(ft-report)が自分の CSS で上書きして色を変えられるよう、変数にしておく */
+  --explore-accent-color: #2c7a3d;          /* 虫眼鏡のボタンの押した状態の地(アプリの基調色・検索の見出しと同じ緑) */
+  --explore-arrow-color: #ef6c00;           /* 矢印の線 */
+  --explore-arrow-casing-color: #fff;       /* 矢印の線と矢じりの縁 */
+  --explore-arrow-head-color: #ef6c00;      /* 矢じり */
+  --explore-target-row-bg: #fff1e6;         /* 一覧の、案内している場所の行の地 */
+  --explore-target-row-accent: #ea580c;     /* 一覧の、案内している場所の行の左の線 */
 }
 
 /* ページ自体の拡大(2本指・ダブルタップ)を止め、縦横のスクロールだけを許す。
@@ -895,6 +905,343 @@ body.view-state-map .leaflet-control-container {
   color: #1f2937;
 }
 
+/* 虫眼鏡のボタン(場所を検索): カメラボタンの左。btn-float の display 指定が hidden 属性より
+   強いため、明示的に非表示にする。開いている間(is-active)は色を塗り、押した状態だと分かるようにする */
+#btnExplore[hidden] {
+  display: none;
+}
+
+.btn-explore {
+  color: #1f2937;
+}
+
+.btn-explore.is-active,
+.btn-explore.is-active:hover {
+  color: #fff;
+  background: var(--explore-accent-color);
+  border-color: var(--explore-accent-color);
+}
+
+/* ===== 場所を検索(place-search.js。仕様は docs/funcspec-202611.md の 4.12) =====
+   地図画面(#viewMap)に重ねて出す。#viewMap は pointer-events: none なので、押せる部品ごとに auto にする。
+   重なり順は、上部のボタン・≡ のメニュー(500)より下の 400(メニューを開くと一覧より上に出る) */
+
+/* 入力欄と検索結果の一覧(左上)。上部のボタンの列(上端 0.75rem・高さ 44px)のすぐ下から始める
+   (≡ のメニューと同じ 64px)。幅は左右の余白を除いた画面の幅(広い画面では 22rem まで)、
+   高さは画面の 6 割まで(それより長いと一覧の中をスクロール) */
+.explore-panel {
+  position: absolute;
+  top: 64px;
+  left: 0.75rem;
+  z-index: 400;
+  width: min(calc(100% - 1.5rem), 22rem);
+  max-height: 60%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+}
+
+.explore-panel[hidden],
+.explore-body[hidden],
+.explore-current[hidden],
+.explore-list[hidden] {
+  display: none;
+}
+
+/* 枠を広げた状態の中身(入力欄・結果・履歴)。結果の一覧だけが、残りの高さの中でスクロールする */
+.explore-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.explore-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  background: #2c7a3d;
+  color: #fff;
+}
+
+.explore-head h2 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* 見出しのボタン(枠を広げる・狭める、閉じる)。押しやすいよう 36px 四方 */
+.explore-size,
+.explore-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.explore-size {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 枠を広げているときは「^」(押すと狭める)、狭めているときは「V」(押すと広げる) */
+.explore-size svg {
+  display: block;
+  transition: transform 0.15s;
+}
+
+.explore-panel.is-collapsed .explore-size svg {
+  transform: rotate(180deg);
+}
+
+@media (hover: hover) {
+  .explore-size:hover,
+  .explore-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* 入力欄。文字の大きさは 16px(1rem)未満にしない(iOS が拡大してしまうため。→ input の共通の指定) */
+.explore-search {
+  flex: none;
+  padding: 0.5rem 0.6rem 0.25rem;
+}
+
+.explore-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 1rem;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+}
+
+.explore-input:focus {
+  outline: 2px solid #2c7a3d;
+  outline-offset: -1px;
+  border-color: #2c7a3d;
+}
+
+/* 入力欄と一覧の間の 1 行(探せるものの説明・当たらない・並びの説明・現在地が分からない理由) */
+.explore-note {
+  flex: none;
+  margin: 0;
+  padding: 0.1rem 0.75rem 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.explore-note.is-message {
+  color: #1f5c2c;
+  font-weight: 600;
+}
+
+/* 結果の一覧と履歴をまとめて、この中だけをスクロールする(端まで送ったスクロールを地図へ伝えない) */
+.explore-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid #e5e7eb;
+}
+
+.explore-list {
+  margin: 0;
+  padding: 0 0 0.2rem;
+  list-style: none;
+}
+
+/* 選んだ場所の履歴(結果の下)。見出しで結果と分ける */
+.explore-history[hidden] {
+  display: none;
+}
+
+.explore-history-title {
+  margin: 0;
+  padding: 0.35rem 0.75rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* 履歴の行の時計の印(番号の位置に出す) */
+.explore-no svg {
+  display: block;
+  margin: 0 auto;
+  color: #6b7280;
+}
+
+/* 1 件に 1 行。左に番号、中に名前(1 行目)と方角・距離・種類(2 行目)、写真なら右に縮小画像。
+   長い名前は 1 行に収めて「…」で切る */
+.explore-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.25rem 0.5rem 0.25rem 0.6rem;
+  border: 0;
+  border-bottom: 1px solid #f3f4f6;
+  background: transparent;
+  font: inherit;
+  color: #111;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 指したときの色は、マウスのある端末だけ(スマホでは、押した後に色が残るため) */
+@media (hover: hover) {
+  .explore-row:hover {
+    background: #f3f4f6;
+  }
+}
+
+/* 案内している場所の行 */
+.explore-row.is-target {
+  background: var(--explore-target-row-bg);
+  box-shadow: inset 4px 0 0 var(--explore-target-row-accent);
+}
+
+.explore-no {
+  flex: none;
+  min-width: 1.6em;
+  font-weight: 700;
+  color: #2c7a3d;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.explore-name,
+.explore-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 2 行目: 方角と距離を先に出し、狭いときは後ろの種類の方を「…」で切る */
+.explore-sub {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.explore-dist {
+  font-weight: 700;
+  color: #111;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-dist:not(:empty)::after {
+  content: '·';
+  margin: 0 0.35em;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.explore-thumb {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #e5e7eb;
+}
+
+/* 上限(20 件)を超えて当たったときの、残りの件数 */
+.explore-more {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* 枠を狭めた状態の中身: 選んだ場所の番号と名前(1 行目)と、方角と距離(2 行目)。押すと枠を広げる */
+.explore-current {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.4rem 0.75rem 0.5rem;
+  border: 0;
+  border-left: 4px solid var(--explore-target-row-accent);
+  background: var(--explore-target-row-bg);
+  font: inherit;
+  color: #111;
+  text-align: left;
+  cursor: pointer;
+}
+
+.explore-current-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+
+/* 狭い画面(幅 320px)でも「北東　直線で約 990m」「NW · 12.3 km (straight line)」が 1 行に収まる大きさにする */
+.explore-info-text {
+  font-size: clamp(1rem, 4.6vw, 1.15rem);
+  font-weight: 700;
+  color: #111;
+}
+
+/* 方角と距離の代わりに出す知らせ(「現在地点をマーカー表示」がオフ・現在地を調べている・分からない) */
+.explore-current.is-message .explore-info-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1f5c2c;
+}
+
+/* 矢印。線の色は Leaflet の color 属性ではなく、ここの stroke で決める(CSS の指定が属性より強い) */
+.explore-arrow-casing {
+  stroke: var(--explore-arrow-casing-color);
+}
+
+.explore-arrow-line {
+  stroke: var(--explore-arrow-color);
+}
+
+/* 矢じり(SVG の marker の中の path) */
+.explore-arrow-head {
+  fill: var(--explore-arrow-head-color);
+  stroke: var(--explore-arrow-casing-color);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* 矢じりの定義だけを持つ SVG。画面には何も出さない */
+.explore-arrow-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 /* ===== 写真 ===== */
 /* 地図上の撮影地点の印(色・大きさはマーカーの設定に従う。形はカメラ入りの丸で固定)。
    通行止めと同じく影を付けて地図から浮かせる(押して写真を開く印のため、見つけやすく) */
@@ -985,6 +1332,18 @@ body.view-state-map .leaflet-control-container {
 
 .photo-view-meta {
   padding-top: 0.25rem;
+}
+
+/* 写真の表示の下のボタン(一覧・追加撮影・戻る)。等幅にはせず、各ボタンを文字の幅から始めて、
+   余りを3つに等しく配る。文字の左右の余白がどのボタンも同じになり、文字の長い「追加撮影」が
+   そのぶん広くなる(幅 320px の画面で 72:104:72px)。文字は折り返さない。幅 320px の画面でも
+   「Take More」が1行に収まるよう、左右の余白の最小はふつうのボタンより少し詰める。
+   .button-group-row > .btn(等幅)より後で効くよう、クラスを重ねて指定する */
+.button-group-row.photo-view-actions > .btn {
+  flex: 1 1 auto;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  white-space: nowrap;
 }
 
 #photoViewName {

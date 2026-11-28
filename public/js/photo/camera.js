@@ -8,7 +8,7 @@
 // このモジュールは撮影だけを担い、撮った画像(JPEG)と撮影時刻を onShot に渡す。
 // 位置の取得・保存・地図への表示は photo-ui.js / photos.js が行う。
 // 1回開くごとに1枚だけ撮る。シャッターを押すと映像をその場で止め(撮ったコマを見せたまま)、
-// 保存が済んだら photo-ui.js がカメラを閉じて、撮った写真の表示を開く(続けて撮るときは写真の表示の「撮影」から)。
+// 保存が済んだら photo-ui.js がカメラを閉じて、撮った写真の表示を開く(続けて撮るときは写真の表示の「追加撮影」から)。
 import { PHOTO_MAX_EDGE_PX, PHOTO_JPEG_QUALITY, CAMERA_IDLE_CLOSE_SEC } from '../common/config.js';
 import { t } from '../common/i18n.js';
 import { errorText, drawToJpeg } from '../common/utils.js';

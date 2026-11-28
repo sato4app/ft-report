@@ -23,6 +23,7 @@
 //     geolocation.js    … 現在地表示・追従・記録の開始/停止(現在地の監視)
 //     layer-panel.js    … 表示設定パネル(≡)の開閉・トグルの保存・統計の表示部品
 //     marker-settings.js… マーカーの色・形状・サイズ設定
+//     place-search.js   … 場所を検索(緊急ポイント・ルート・スポット・写真を名称で探し、矢印・方角・距離で案内)
 //   track/ … 移動経路
 //     track.js          … 移動経路のデータ・描画・端末への保存・画面スリープの防止
 //     track-ui.js       … 移動経路の操作(記録開始・停止・GPX 読み込み・出力・クリア)
@@ -86,6 +87,7 @@ import {
   bindPhotoEvents, applyPhotoControlsForView, updatePhotoPanel, restorePhotosFromStorage
 } from './photo/photo-ui.js';
 import { bindPhotoViewEvents } from './photo/photo-view.js';
+import { bindExploreEvents, applyExploreControlsForView } from './map/place-search.js';
 import { initFt } from './ft/ft-main.js';
 
 // ===== 状態 =====
@@ -291,13 +293,14 @@ function bindEvents() {
   // ハイキングマップ表示中は文字入力を行わない。モーダルが開いていないのに
   // 文字入力欄へフォーカスが入った場合(閉じ忘れ・ポケット内の誤タッチ等)は即座に外し、
   // ソフトキーボードや文字入力ウインドウが出ないようにする。
-  // 開いているモーダル内の入力欄(GPX のファイル名など)は対象外
+  // 開いているモーダル内の入力欄(GPX のファイル名など)と、場所を検索の入力欄(#explorePanel。
+  // 虫眼鏡のボタンで開いたときだけ表示される)は対象外
   document.addEventListener('focusin', (e) => {
     if (currentView !== 'map') return;
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
     if (!isKeyboardInput(target)) return;
-    if (target.closest('.modal:not([hidden])')) return;
+    if (target.closest('.modal:not([hidden]), #explorePanel:not([hidden])')) return;
     target.blur();
   });
 
@@ -331,6 +334,9 @@ function bindEvents() {
   bindTrackEvents();
   bindPhotoEvents();
   bindPhotoViewEvents();
+  // 場所を検索のトグルと虫眼鏡のボタン。どの画面から開いてもハイキングマップ画面に切り替えるため、
+  // その操作だけを関数で渡す(place-search.js から app.js を import すると相互参照になる)
+  bindExploreEvents({ showMapView: () => showView('map') });
   // 表示設定パネルのトグルは切り替えるたびに保存する(次回起動時に restoreMapToggles で戻す)。
   // 各トグルの処理(上)より後に登録し、取り消しで checked を戻した場合も最終の状態を保存する
   for (const input of mapToggleInputs()) on(input, 'change', saveMapToggles);
@@ -430,6 +436,8 @@ function showView(name) {
     applyTrackControlsForView(true);
     // 写真を撮影トグルの状態に応じてカメラボタンの表示を更新
     applyPhotoControlsForView(true);
+    // 場所を検索トグルの状態に応じて虫眼鏡のボタンの表示を更新(開いている場所を検索はそのまま)
+    applyExploreControlsForView(true);
     // 時刻表示は normalizeMapChrome() でトグルの状態に従って反映済み
     requestAnimationFrame(() => resizeMap());
   } else if (name === 'home') {
@@ -442,6 +450,8 @@ function showView(name) {
     // 記録操作ボタン群・カメラボタンはマップ画面のUIなので隠す(記録状態自体は保持する)
     applyTrackControlsForView(false);
     applyPhotoControlsForView(false);
+    // 場所を検索はハイキングマップ画面のものなので終える(× と同じ。入力欄・一覧・矢印を消す)
+    applyExploreControlsForView(false);
     // マップ以外では時刻表示を停止・非表示(トグル状態は保持)
     setClockVisible(false);
     requestAnimationFrame(() => resizeMap());

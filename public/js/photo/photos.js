@@ -25,10 +25,30 @@ import { drawToJpeg } from '../common/utils.js';
 let photos = [];
 let onPhotoClick = null;    // 印が押されたとき(写真の表示を開く)
 let onPhotosChanged = null; // 枚数・出力済みかどうかが変わったとき(パネルの表示を更新する)
+const removedListeners = new Set();   // 写真が消えたときの受け手(addPhotosRemovedListener)
 
 export function setPhotoHandlers({ onClick, onChanged } = {}) {
   onPhotoClick = onClick || null;
   onPhotosChanged = onChanged || null;
+}
+
+// 写真が消えたとき(1枚の削除・クリア)に知らせる。受け手は何個でも登録できる。登録を外す関数を返す。
+// 受け手 fn(ids) の ids は消えた写真の id の配列。写真の一覧から外した後に呼ぶ(getPhoto(id) は null を返す)。
+// 場所を検索(map/place-search.js)が、検索結果に載せた写真が消えたことを知るのに使う
+export function addPhotosRemovedListener(fn) {
+  removedListeners.add(fn);
+  return () => removedListeners.delete(fn);
+}
+
+function emitPhotosRemoved(ids) {
+  if (ids.length === 0) return;
+  for (const fn of [...removedListeners]) {
+    try {
+      fn(ids);
+    } catch (err) {
+      console.error('[photos] 写真が消えたときの受け手の処理で問題が発生しました:', err);
+    }
+  }
 }
 
 export function getPhotos() {
@@ -145,6 +165,8 @@ export async function renamePhoto(id, name) {
   const photo = getPhoto(id);
   if (!photo) return;
   photo.name = name;
+  // 印の title は、見た目を変えて作り直したときにも新しい名前になるよう options も直す
+  if (photo.marker) photo.marker.options.title = name;
   photo.marker?.getElement()?.setAttribute('title', name);
   setUnexported(true);
   onPhotosChanged?.();
@@ -162,11 +184,13 @@ export async function deletePhoto(id) {
   releaseThumb(id);
   if (photos.length === 0) setUnexported(false);
   onPhotosChanged?.();
+  emitPhotosRemoved([id]);
   await deletePhotoRecord(id);
 }
 
 // 全写真を消す(写真の「クリア」と、クリアを選んだ撮影・読み込みから photo-ui.js が呼ぶ)
 export async function clearPhotos() {
+  const ids = photos.map((p) => p.id);
   for (const photo of photos) {
     removeMarker(photo);
     releaseThumb(photo.id);
@@ -174,6 +198,7 @@ export async function clearPhotos() {
   photos = [];
   setUnexported(false);
   onPhotosChanged?.();
+  emitPhotosRemoved(ids);
   try { await clearPhotoRecords(); } catch { /* 保存を消せなくても表示は消す */ }
 }
 

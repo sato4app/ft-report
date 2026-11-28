@@ -2,6 +2,7 @@
 // - 緊急ポイント / ハイキング(ルート + スポット) / 通行止め・通行困難地点 の3つのレイヤー
 // - マーカーの設定によるスタイル(setOverlayStyle)と、ハイキングマップ表示での表示・非表示(setOverlaysVisible)
 // - ポップアップと、ルートを押したときに近くのポイントを優先する処理
+// - 場所を検索の対象にする地図データ(getSearchablePlaces)
 // 表示データは published-data.js が取得して渡す(本モジュールは描画専用)。
 import * as L from 'leaflet';
 import { getMap, TAP_TOLERANCE } from './map.js';
@@ -105,6 +106,34 @@ export function getFeatureCounts() {
     routes: countByType('route'),
     spots: countByType('spot')
   };
+}
+
+// 場所を検索(place-search.js)の対象にする地図データ: 緊急ポイント・ルート・スポット(通行止めは含めない)。
+// 各要素は { type: 'point' | 'route' | 'spot', id, name, englishName, latlngs: [[lat, lng], ...] }。
+// id は緊急ポイントだけに入れる(ルート・スポットの id は検索の対象にしない)。latlngs はポイント・スポットが1点、
+// ルートは地図に描く線と同じ(開始・終了ポイントまで伸ばした線)。地図データが無ければ空の配列
+export function getSearchablePlaces() {
+  if (!mapdataGeoJSON) return [];
+  const TYPES = { 'ポイントGPS': 'point', route: 'route', spot: 'spot' };
+  const places = [];
+  for (const f of expandRouteFeatures(mapdataGeoJSON).features) {
+    const p = f.properties || {};
+    const type = TYPES[p.type];
+    const g = f.geometry;
+    if (!type || !g) continue;
+    let latlngs;
+    if (g.type === 'Point') latlngs = [[g.coordinates[1], g.coordinates[0]]];
+    else if (g.type === 'LineString') latlngs = g.coordinates.map((c) => [c[1], c[0]]);
+    else continue;
+    places.push({
+      type,
+      id: type === 'point' ? String(p.id ?? '') : '',
+      name: p.name || '',
+      englishName: p.englishName || '',
+      latlngs
+    });
+  }
+  return places;
 }
 
 // 地図データの名称を表示言語で返す。英語表示では英語名(englishName)、無ければ日本語の名称(name)。

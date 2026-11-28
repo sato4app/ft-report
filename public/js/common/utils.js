@@ -1,5 +1,5 @@
 // 複数のモジュールで使う小さな関数
-// (日付・時刻の書式 / 文字のエスケープ / 例外の文言 / 画像の JPEG 化)
+// (日付・時刻の書式 / 文字のエスケープ / 例外の文言 / 画像の JPEG 化 / 方角 / 番号の書き方)
 
 // 2桁のゼロ埋め
 export function pad2(n) {
@@ -35,6 +35,23 @@ export function escapeHtml(s) {
 // 例外の内容を、利用者に見せる文言({message})へ入れる短い文字列にする
 export function errorText(err) {
   return err?.message || err?.name || '';
+}
+
+// 地点 from から見た地点 to の方角(度。北が 0、東が 90)。from / to は { lat, lng }(Leaflet の LatLng でもよい)。
+// 移動経路の進行方向(track.js)と、場所を検索の方角(place-search.js)で使う
+export function bearingDegrees(from, to) {
+  const toRad = Math.PI / 180;
+  const lat1 = from.lat * toRad;
+  const lat2 = to.lat * toRad;
+  const dLng = (to.lng - from.lng) * toRad;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (Math.atan2(y, x) / toRad + 360) % 360;
+}
+
+// 番号を丸数字にする(1〜20 は ①〜⑳、21 からは (21)、(22)、…)。日英で同じ書き方
+export function circledNumber(n) {
+  return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : `(${n})`;
 }
 
 // 画像(video / ImageBitmap など)を width × height の大きさに描いて JPEG にする。

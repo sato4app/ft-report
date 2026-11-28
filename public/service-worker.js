@@ -4,8 +4,8 @@
 // - app-shell-{日付}.{連番}: アプリシェル(HTML/CSS/JS、CDN、アイコン)。取得戦略は handleShellRequest。
 // 公開API(/api/*)は横取りしない。取得とキャッシュはアプリ側(published-data.js)が version を見て行う。
 
-const SHELL_CACHE = 'app-shell-2026-11-27.8';
-// 取り込んだ minoh-hiking の版: 2026-11-22.1
+const SHELL_CACHE = 'app-shell-2026-11-28.1';
+// 取り込んだ minoh-hiking の版: 2026-11-28.7
 const TILE_CACHE_PREFIX = 'gsi-';
 const SHELL_CACHE_PREFIX = 'app-shell-';
 
@@ -46,7 +46,7 @@ const SHELL_LOCAL_PATHS = [
   './js/common/ui.js',
   './js/common/page-guard.js',
   './js/common/file-export.js',
-  // 地図・現在地・表示設定パネル・マーカーの設定
+  // 地図・現在地・表示設定パネル・マーカーの設定・場所を検索
   './js/map/map.js',
   './js/map/map-overlays.js',
   './js/map/marker-icons.js',
@@ -54,6 +54,7 @@ const SHELL_LOCAL_PATHS = [
   './js/map/geolocation.js',
   './js/map/layer-panel.js',
   './js/map/marker-settings.js',
+  './js/map/place-search.js',
   // 移動経路
   './js/track/track.js',
   './js/track/track-ui.js',
@@ -94,7 +95,6 @@ const SHELL_LOCAL_PATHS = [
   './js/ft/ft-report-items.js',
   './js/ft/ft-item-settings.js',
   './js/ft/ft-weather.js',
-  './js/ft/ft-explore.js',
   './css/ft-style.css',
   './ft-manifest.webmanifest',
   './icons/ft-icon-192.png',
@@ -112,6 +112,9 @@ const SHELL_LOCAL_PATHS = [
 //   - closures.js                … 公開データ取得を published-data.js に統合する前の版
 //   - orientation.js             … 現在地点表示ボタンで方角(扇形)を出していた版の app.js が
 //                                  import している。方角は示す向きが安定しないため 2026-09-04 に廃止した
+//   - js/photo/photo-explore.js  … app-shell-2026-11-28.1〜.3 の app.js が import する場所を検索(写真の一覧)。
+//                                  2026-11-28.4 で文字を入力する検索に改め、js/map/place-search.js に移した。
+//                                  中身は 2026-11-28.3 のまま(今の photos.js には無い setHiddenPhotoMarkers を使う)
 // なお起動画像の元データ(.odg)は public/ ではなく assets/ に置く(public/ は全ファイルが
 //   配信されるため)。差し替えの手順は docs/deployGuide-202609.md の 5.3。
 // 2026-11-20(app-shell-2026-11-20.6)に、ルート直下にあった JS・CSS を js/・css/ の下へ移した。

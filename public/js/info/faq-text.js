@@ -116,8 +116,8 @@ export const FAQ_SECTIONS = [
             en: 'There is no charge, and no ads are shown.'
           },
           {
-            ja: '位置情報は、端末の中で地図の表示と経路の記録に使うだけです。外部へ送信したり、アプリを利用した端末を除き、どこかに保存することはありません。',
-            en: 'Your location is used only on your device, to draw the map and record your track. It is never sent anywhere, and it is not stored anywhere except on the device you use the app on.'
+            ja: '位置情報は、端末の中で地図の表示・経路の記録と、「場所を検索」で探した場所までの方角と距離の計算に使うだけです。外部へ送信したり、アプリを利用した端末を除き、どこかに保存することはありません。',
+            en: 'Your location is used only on your device, to draw the map, record your track, and work out the direction and distance to places you find with "Find Places". It is never sent anywhere, and it is not stored anywhere except on the device you use the app on.'
           }
         ]
       },
