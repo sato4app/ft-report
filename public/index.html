@@ -122,29 +122,36 @@
          入力欄の placeholder・一覧の上の説明・一覧の行・バー・方角と距離の文言は place-search.js が入れる。
          マップ画面ではモーダルの外の入力欄からフォーカスを外すが、この入力欄だけは除く(app.js の focusin) -->
     <section class="explore-panel" id="explorePanel" aria-labelledby="exploreTitle" hidden>
+      <!-- 見出し: 枠を広げる(V)・狭める(^)ボタン(向きは CSS で回す。aria-label・title は place-search.js が状態に合わせて入れる)と、
+           閉じるボタン(×。現在地からの矢印も消す) -->
       <header class="explore-head">
         <h2 id="exploreTitle" data-i18n="explore.title">場所を検索</h2>
+        <button type="button" class="explore-size" id="btnExploreSize" aria-controls="exploreBody" aria-expanded="true" aria-label="枠を狭める" title="枠を狭める">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <button type="button" class="explore-close" id="btnExploreClose" aria-label="「場所を検索」を閉じる" title="閉じる" data-i18n-aria="explore.closeAria" data-i18n-title="common.close">×</button>
       </header>
-      <div class="explore-search">
-        <input type="search" class="explore-input" id="exploreInput" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="検索する名称" data-i18n-aria="explore.inputAria" />
+      <!-- 枠を広げた状態(開いたときの既定)の中身: 入力欄・結果の一覧・選んだ場所の履歴 -->
+      <div class="explore-body" id="exploreBody">
+        <div class="explore-search">
+          <input type="search" class="explore-input" id="exploreInput" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="検索する名称" data-i18n-aria="explore.inputAria" />
+        </div>
+        <p class="explore-note" id="exploreNote" role="status" aria-live="polite"></p>
+        <!-- 結果の一覧と、その下の選んだ場所の履歴(5 件まで。端末に保存)。2 つをまとめてスクロールする -->
+        <div class="explore-scroll" id="exploreScroll">
+          <ol class="explore-list" id="exploreList" aria-label="検索結果" data-i18n-aria="explore.ariaList"></ol>
+          <section class="explore-history" id="exploreHistory" aria-labelledby="exploreHistoryTitle" hidden>
+            <h3 class="explore-history-title" id="exploreHistoryTitle" data-i18n="explore.historyTitle">最近選んだ場所</h3>
+            <ol class="explore-list" id="exploreHistoryList"></ol>
+          </section>
+        </div>
       </div>
-      <p class="explore-note" id="exploreNote" role="status" aria-live="polite"></p>
-      <!-- 結果の一覧と、その下の選んだ場所の履歴(5 件まで。端末に保存)。2 つをまとめてスクロールする -->
-      <div class="explore-scroll" id="exploreScroll">
-        <ol class="explore-list" id="exploreList" aria-label="検索結果" data-i18n-aria="explore.ariaList"></ol>
-        <section class="explore-history" id="exploreHistory" aria-labelledby="exploreHistoryTitle" hidden>
-          <h3 class="explore-history-title" id="exploreHistoryTitle" data-i18n="explore.historyTitle">最近選んだ場所</h3>
-          <ol class="explore-list" id="exploreHistoryList"></ol>
-        </section>
-      </div>
+      <!-- 枠を狭めた状態の中身: 選んだ場所の番号と名前、その下に方角と距離(選んでいなければ出さない)。押すと枠を広げる -->
+      <button type="button" class="explore-current" id="exploreCurrent" hidden>
+        <span class="explore-current-name" id="exploreCurrentName"></span>
+        <span class="explore-info-text" id="exploreInfoText" role="status" aria-live="polite"></span>
+      </button>
     </section>
-    <div class="explore-stack" id="exploreStack" hidden>
-      <button type="button" class="explore-bar" id="exploreBar" aria-expanded="false"></button>
-      <div class="explore-info" id="exploreInfo" role="status" aria-live="polite" hidden>
-        <div class="explore-info-text" id="exploreInfoText"></div>
-      </div>
-    </div>
     <div class="map-layer-panel" id="mapLayerPanel" hidden>
       <!-- 画面に重ねて出す表示の切替。どちらもマップ画面にしか効かないため、
            起動画面の「情報・言語/Info & Language」ではなくここに置く -->

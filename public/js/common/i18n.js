@@ -367,11 +367,15 @@ const DICT = {
   'explore.kindPhoto': { ja: '写真', en: 'Photo' },
   // 一覧の各行の方角と距離(約 0m のときは距離だけ)
   'explore.rowInfo': { ja: '{direction} {distance}', en: '{direction} {distance}' },
-  // たたんだ一覧(バー)の読み上げ。{label} は「③ E-06 名称」の形
+  // 枠を狭めた状態の、選んだ場所(押すと枠を広げる)の読み上げ。{label} は「③ E-06 名称」の形
+  // (キーの名前は、たたんだ一覧を「バー」と呼んでいた 2026.102 までの名残)
   'explore.barAria': {
-    ja: '{label}へ案内中。押すと検索結果の一覧を開きます',
-    en: 'Guiding you to {label}. Press to open the search results.'
+    ja: '{label}へ案内中。押すと枠を広げて検索結果の一覧を開きます',
+    en: 'Guiding you to {label}. Press to expand and open the search results.'
   },
+  // 見出しの、枠を広げる(V)・狭める(^)ボタンの読み上げ・title(状態に合わせて入れ替える)
+  'explore.collapse': { ja: '枠を狭める', en: 'Collapse' },
+  'explore.expand': { ja: '枠を広げる', en: 'Expand' },
   // 方角と距離の代わりに出す知らせ
   'explore.markerOff': {
     ja: '「現在地点をマーカー表示」がオフのため、現在地を続けて取得できません。≡ のメニューでオンにすると、方角と距離を表示します。',

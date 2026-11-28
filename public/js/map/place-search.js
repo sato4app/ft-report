@@ -2,7 +2,8 @@
 // 入力した文字で、緊急ポイント(ID・名称)・ルート(名称)・スポット(名称)・写真(名前)を探し、
 // 現在地から近い順に一覧で出す(各行に番号・方角・距離・種類。写真は縮小画像も)。
 // 結果を押すと、その場所まで、現在地からの矢印と方角・距離で案内する
-// (一覧はたたんでバーにし、すぐ下に方角と距離を出す。約 30m 以内に入ったら「近くに着きました」と知らせる)。
+// (ウインドウの枠を狭め、見出しの下に選んだ場所と方角・距離を出す。約 30m 以内に入ったら「近くに着きました」と知らせる)。
+// ウインドウの見出しには、枠を広げる(V)・狭める(^)ボタンと、閉じるボタン(×。現在地からの矢印も消す)を置く。
 // 入口は表示設定パネル(≡)の「場所を検索」トグルで、ON のとき上部に出す虫眼鏡のボタン(#btnExplore)。
 // openExplore() は、どの画面から呼んでも地図画面に切り替えてから開く(ft-report は起動時画面のボタンから呼ぶ)。
 // 更新版の確認は openExplore() の中ではしない(呼ぶ側のボタンが行う)。
@@ -61,19 +62,21 @@ const el = {
   // 表示設定パネルの「場所を検索」と、ON のとき上部に出す虫眼鏡のボタン
   toggle: document.getElementById('toggleExplore'),
   button: document.getElementById('btnExplore'),
-  // 入力欄と結果の一覧(広げた状態)。結果の下に、選んだ場所の履歴(同じスクロールの中)
+  // 場所を検索のウインドウ。見出しに、枠を広げる・狭めるボタンと閉じるボタン(×)
   panel: document.getElementById('explorePanel'),
+  btnSize: document.getElementById('btnExploreSize'),
+  btnClose: document.getElementById('btnExploreClose'),
+  // 枠を広げた状態(既定)の中身: 入力欄と結果の一覧。結果の下に、選んだ場所の履歴(同じスクロールの中)
+  body: document.getElementById('exploreBody'),
   input: document.getElementById('exploreInput'),
   note: document.getElementById('exploreNote'),
   scroll: document.getElementById('exploreScroll'),
   list: document.getElementById('exploreList'),
   history: document.getElementById('exploreHistory'),
   historyList: document.getElementById('exploreHistoryList'),
-  btnClose: document.getElementById('btnExploreClose'),
-  // たたんだ一覧(バー)と、そのすぐ下の方角と距離
-  stack: document.getElementById('exploreStack'),
-  bar: document.getElementById('exploreBar'),
-  info: document.getElementById('exploreInfo'),
+  // 枠を狭めた状態の中身: 選んだ場所(番号と名前・方角と距離)。押すと枠を広げる
+  current: document.getElementById('exploreCurrent'),
+  currentName: document.getElementById('exploreCurrentName'),
   infoText: document.getElementById('exploreInfoText')
 };
 
@@ -97,8 +100,15 @@ export function bindExploreEvents({ showMapView }) {
     if (ex) closeExplore();
     else openExplore();
   });
+  // ×: ウインドウを閉じ、現在地からの矢印も消す(虫眼鏡のボタンで閉じるのと同じ)
   on(el.btnClose, 'click', closeExplore);
-  on(el.bar, 'click', () => setCollapsed(false));
+  // 枠を広げる(V)・狭める(^)。狭めた状態の選んだ場所を押しても広げる
+  on(el.btnSize, 'click', () => {
+    if (ex) setCollapsed(!ex.collapsed);
+  });
+  on(el.current, 'click', () => {
+    if (ex) setCollapsed(false);
+  });
   // 結果の行・履歴の行を押す(どちらも同じスクロールの中にある)
   on(el.scroll, 'click', (ev) => {
     const row = ev.target.closest('.explore-row');
@@ -160,7 +170,7 @@ export function openExplore() {
     history: [],            // 選んだ場所の履歴(新しい順。結果の下に出す。→ loadHistoryItems)
     target: null,           // 案内している場所(results または history の要素)
     arrived: false,         // 案内している場所について「近くに着きました」を知らせたか
-    collapsed: false,
+    collapsed: false,       // 枠を狭めているか(開いたときは広げた状態)
     fix: currentFix(),      // 現在地 [lat, lng](分からないときは null)
     arrow: null,            // 矢印 { renderer, casing, line, to }
     arrowDefs: null,        // 矢じりの SVG(defs)
@@ -172,6 +182,7 @@ export function openExplore() {
   ex.history = loadHistoryItems();
   for (const item of ex.history) measure(item);
   startThumbObserver();
+  el.panel.hidden = false;
   setCollapsed(false);
   renderGuide();
   updateExploreButton();
@@ -180,7 +191,7 @@ export function openExplore() {
   return true;
 }
 
-// 場所を検索を終える。入力欄・一覧(バー)・矢印・方角と距離を消す
+// 場所を検索を終える。ウインドウ(入力欄・一覧・選んだ場所)と、現在地からの矢印を消す
 export function closeExplore() {
   if (!ex) return;
   clearTimeout(ex.searchTimer);
@@ -190,7 +201,6 @@ export function closeExplore() {
   if (document.activeElement === el.input) el.input.blur();
   el.input.value = '';
   el.panel.hidden = true;
-  el.stack.hidden = true;
   el.list.textContent = '';
   el.historyList.textContent = '';
   ex = null;
@@ -497,23 +507,36 @@ function renderNote() {
   el.note.classList.toggle('is-message', message);
 }
 
-// 一覧をたたむ・広げる。たたんだときは、案内している場所の番号と名前をバーに出し、
-// そのすぐ下に方角と距離を出す(一覧を広げている間は、どちらも出さない。矢印は出し続ける)
+// 枠を狭める・広げる(見出しのボタン)。広げた状態(開いたときの既定)は入力欄・結果・履歴、
+// 狭めた状態は見出しと、選んだ場所(番号と名前・方角と距離。選んでいなければ見出しだけ)。
+// 結果・履歴を選ぶと狭める。矢印は、どちらの状態でも出し続ける
 function setCollapsed(collapsed) {
-  const target = ex.target;
-  ex.collapsed = collapsed && !!target;
-  if (!ex.collapsed) renderList();
-  el.panel.hidden = ex.collapsed;
-  el.stack.hidden = !ex.collapsed;
-  el.bar.setAttribute('aria-expanded', String(!ex.collapsed));
-  if (ex.collapsed) {
-    const label = itemLabel(target);
-    el.bar.textContent = `${label} ▼`;
-    el.bar.setAttribute('aria-label', t('explore.barAria', { label }));
+  ex.collapsed = collapsed;
+  if (collapsed) {
+    if (document.activeElement === el.input) el.input.blur();
+  } else {
+    renderList();
   }
+  el.body.hidden = collapsed;
+  el.panel.classList.toggle('is-collapsed', collapsed);
+  el.btnSize.setAttribute('aria-expanded', String(!collapsed));
+  const sizeLabel = t(collapsed ? 'explore.expand' : 'explore.collapse');
+  el.btnSize.setAttribute('aria-label', sizeLabel);
+  el.btnSize.title = sizeLabel;
+  renderCurrent();
 }
 
-// バー・知らせに出す「③ 名前」の形(履歴から選んだときは番号を付けない)
+// 狭めた状態に出す、選んだ場所の番号と名前(方角と距離は renderGuide が入れる)
+function renderCurrent() {
+  const target = ex.target;
+  el.current.hidden = !(ex.collapsed && target);
+  if (!target) return;
+  const label = itemLabel(target);
+  el.currentName.textContent = label;
+  el.current.setAttribute('aria-label', t('explore.barAria', { label }));
+}
+
+// 選んだ場所・知らせに出す「③ 名前」の形(履歴から選んだときは番号を付けない)
 function itemLabel(item) {
   return item.no ? `${circledNumber(item.no)} ${item.label}`.trim() : item.label;
 }
@@ -547,7 +570,7 @@ function onPhotosRemoved(ids) {
 }
 
 // ===== 案内 =====
-// 結果・履歴を押したとき。その場所の案内を始め、履歴の先頭に残して、一覧をたたむ(キーボードも閉じる)。
+// 結果・履歴を押したとき。その場所の案内を始め、履歴の先頭に残して、枠を狭める(キーボードも閉じる)。
 // 案内中の場所をもう一度押したときも、選び直したことにする(「近くに着きました」をまた知らせる)
 function selectResult(key) {
   if (!ex) return;
@@ -556,25 +579,23 @@ function selectResult(key) {
   rememberChoice(item);
   ex.target = item;
   ex.arrived = false;
-  if (document.activeElement === el.input) el.input.blur();
   setCollapsed(true);
   renderGuide();
 }
 
-// 方角と距離(バーのすぐ下)と矢印を、今の状態に合わせて出し直す
+// 選んだ場所の方角と距離(狭めた状態の名前の下)と矢印を、今の状態に合わせて出し直す
 function renderGuide() {
   if (!ex) return;
   const target = ex.target;
+  renderCurrent();
   if (!target) {
-    el.info.hidden = true;
     removeArrow();
     return;
   }
-  el.info.hidden = false;
 
   // 現在地が分からないときは、方角と距離の代わりに知らせを出し、矢印は出さない
   const message = locationMessage();
-  el.info.classList.toggle('is-message', !!message);
+  el.current.classList.toggle('is-message', !!message);
   if (message) {
     el.infoText.textContent = message;
     removeArrow();
@@ -646,7 +667,7 @@ function onLocationEvent(event) {
     orderResults();
     for (const item of ex.history) measure(item);
     renderList();
-    if (ex.collapsed) setCollapsed(true);   // バーの番号を合わせる
+    renderCurrent();   // 選んだ場所の番号を合わせる
   } else {
     for (const item of [...ex.results, ...ex.history]) {
       measure(item);
