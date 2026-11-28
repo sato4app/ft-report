@@ -38,7 +38,7 @@ export function errorText(err) {
 }
 
 // 地点 from から見た地点 to の方角(度。北が 0、東が 90)。from / to は { lat, lng }(Leaflet の LatLng でもよい)。
-// 移動経路の進行方向(track.js)と、場所を検索の方角(photo-explore.js)で使う
+// 移動経路の進行方向(track.js)と、場所を検索の方角(place-search.js)で使う
 export function bearingDegrees(from, to) {
   const toRad = Math.PI / 180;
   const lat1 = from.lat * toRad;

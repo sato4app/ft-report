@@ -93,8 +93,8 @@
     <div class="map-top-actions" id="mapTopActions">
       <!-- 時刻表示: 「時刻を表示」トグル ON のときのみ表示 -->
       <div class="map-clock" id="mapClock" hidden role="status" aria-live="off"></div>
-      <!-- 虫眼鏡のボタン(場所を検索)。「場所を検索」ON のとき表示する。押すたびに写真の一覧を開く・閉じる
-           (photo-explore.js。開いている間は aria-pressed="true" と is-active) -->
+      <!-- 虫眼鏡のボタン(場所を検索)。「場所を検索」ON のとき表示する。押すたびに入力欄と検索結果を開く・閉じる
+           (place-search.js。開いている間は aria-pressed="true" と is-active) -->
       <button type="button" class="btn-float btn-track-action btn-explore" id="btnExplore" aria-label="場所を検索" title="場所を検索" aria-pressed="false" data-i18n-aria="explore.title" data-i18n-title="explore.title" hidden>
         <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15.4 15.4l5.6 5.6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
       </button>
@@ -117,16 +117,20 @@
         </svg>
       </button>
     </div>
-    <!-- 場所を検索(photo-explore.js。仕様は docs/funcspec-202611.md の 4.12)。
-         写真の一覧(広げた状態)と、写真を押した後のたたんだ一覧(バー)・方角と距離。
-         一覧の行・バー・方角と距離の文言は photo-explore.js が入れる -->
+    <!-- 場所を検索(place-search.js。仕様は docs/funcspec-202611.md の 4.12)。
+         入力欄と検索結果の一覧(広げた状態)と、結果を押した後のたたんだ一覧(バー)・方角と距離。
+         入力欄の placeholder・一覧の上の説明・一覧の行・バー・方角と距離の文言は place-search.js が入れる。
+         マップ画面ではモーダルの外の入力欄からフォーカスを外すが、この入力欄だけは除く(app.js の focusin) -->
     <section class="explore-panel" id="explorePanel" aria-labelledby="exploreTitle" hidden>
       <header class="explore-head">
         <h2 id="exploreTitle" data-i18n="explore.title">場所を検索</h2>
         <button type="button" class="explore-close" id="btnExploreClose" aria-label="「場所を検索」を閉じる" title="閉じる" data-i18n-aria="explore.closeAria" data-i18n-title="common.close">×</button>
       </header>
-      <ol class="explore-list" id="exploreList" aria-label="写真の一覧" data-i18n-aria="explore.ariaList"></ol>
-      <p class="explore-empty" id="exploreEmpty" data-i18n="explore.empty" hidden>写真がありません</p>
+      <div class="explore-search">
+        <input type="search" class="explore-input" id="exploreInput" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="検索する名称" data-i18n-aria="explore.inputAria" />
+      </div>
+      <p class="explore-note" id="exploreNote" role="status" aria-live="polite"></p>
+      <ol class="explore-list" id="exploreList" aria-label="検索結果" data-i18n-aria="explore.ariaList"></ol>
     </section>
     <div class="explore-stack" id="exploreStack" hidden>
       <button type="button" class="explore-bar" id="exploreBar" aria-expanded="false"></button>
@@ -199,8 +203,8 @@
       </div>
       <!-- 写真の「読み込み」で開くファイル選択(KMZ)。accept を付けない理由は GPX と同じ -->
       <input type="file" id="photoImportInput" hidden />
-      <!-- 場所を検索: ON で上部に虫眼鏡のボタンを出す(押すと写真の一覧を開き、撮影地点へ案内する)。
-           OFF にすると、開いている一覧・矢印も閉じる。写真は消さない -->
+      <!-- 場所を検索: ON で上部に虫眼鏡のボタンを出す(押すと入力欄が開き、緊急ポイント・ルート・スポット・写真を
+           名称で探して、選んだ場所へ案内する)。OFF にすると、開いている検索・矢印も閉じる -->
       <label class="toggle toggle-switch" data-guide="panelExplore">
         <input type="checkbox" id="toggleExplore" />
         <span class="toggle-slider" aria-hidden="true"></span>

@@ -339,21 +339,36 @@ const DICT = {
     en: 'The camera was closed because it was not used for a while'
   },
 
-  // ----- 場所を検索(photo-explore.js。写真の一覧と、撮影地点までの矢印・方角・距離) -----
+  // ----- 場所を検索(place-search.js。名称で探した場所への矢印・方角・距離) -----
   // 見出し・虫眼鏡のボタンの名前は、表示設定パネルのトグル(map.toggleExplore)と同じにする
   'explore.title': { ja: '場所を検索', en: 'Find Places' },
   'explore.closeAria': { ja: '「場所を検索」を閉じる', en: 'Close "Find Places"' },
-  'explore.ariaList': { ja: '写真の一覧', en: 'Photo list' },
-  'explore.empty': { ja: '写真がありません', en: 'No photos' },
-  // 写真が1枚も無いときに虫眼鏡のボタンを押した(開かずに知らせる)
-  'explore.noPhotos': {
-    ja: '写真がありません。≡ のメニューの「写真を撮影」をオンにして、写真を撮るか「KMZ読み込み」で読み込んでください。',
-    en: 'No photos. Turn on "Take Photos" in the ≡ menu, then take photos or use "Import KMZ".'
+  'explore.inputAria': { ja: '検索する名称', en: 'Name to search for' },
+  'explore.placeholder': { ja: '名称・ID で検索', en: 'Search by name or ID' },
+  'explore.ariaList': { ja: '検索結果', en: 'Search results' },
+  // 入力欄の下の 1 行。入力前は探せるものの説明、当たらなければその旨、当たれば並びの説明
+  'explore.hint': {
+    ja: '緊急ポイント(ID・名称)・ルート・スポット・写真の名前の一部で探します。',
+    en: 'Type part of a name to search emergency points (also by ID), routes, spots and photos.'
   },
-  // たたんだ一覧(バー)の読み上げ。{label} は「③ 写真3」の形
+  'explore.noResults': { ja: '見つかりませんでした', en: 'No matches found' },
+  'explore.sortedNote': { ja: '現在地から近い順(距離は直線)', en: 'Nearest first (straight-line distance)' },
+  // 当たった件数が一覧の上限(20 件)を超えたとき、一覧の最後に出す
+  'explore.more': {
+    ja: 'ほかに {n} 件あります。名称を詳しく入力すると絞り込めます。',
+    en: '{n} more. Type more of the name to narrow the results.'
+  },
+  // 結果の種類(一覧の 2 行目)
+  'explore.kindPoint': { ja: '緊急ポイント', en: 'Emergency Point' },
+  'explore.kindRoute': { ja: 'ルート', en: 'Route' },
+  'explore.kindSpot': { ja: 'スポット', en: 'Spot' },
+  'explore.kindPhoto': { ja: '写真', en: 'Photo' },
+  // 一覧の各行の方角と距離(約 0m のときは距離だけ)
+  'explore.rowInfo': { ja: '{direction} {distance}', en: '{direction} {distance}' },
+  // たたんだ一覧(バー)の読み上げ。{label} は「③ E-06 名称」の形
   'explore.barAria': {
-    ja: '{label}へ案内中。押すと写真の一覧を開きます',
-    en: 'Guiding you to {label}. Press to open the photo list.'
+    ja: '{label}へ案内中。押すと検索結果の一覧を開きます',
+    en: 'Guiding you to {label}. Press to open the search results.'
   },
   // 方角と距離の代わりに出す知らせ
   'explore.markerOff': {
@@ -655,10 +670,10 @@ const DICT = {
 
   'guide.mapExploreTitle': { ja: '場所を検索', en: 'Find Places' },
   'guide.mapExploreBody': {
-    ja: '「場所を検索」をオンにすると、画面上部に虫眼鏡のボタンが出ます。押すと写真の一覧が出ます。\n' +
-        '写真を選ぶと、撮影した場所までの方角と直線距離を、現在地からの矢印で示します(「現在地点をマーカー表示」をオンにしておきます)。',
-    en: 'Turn on "Find Places" and a magnifier button appears at the top. Press it to see a list of your photos.\n' +
-        'Choose a photo and an arrow from your location shows the direction and straight-line distance to where it was taken (keep "Show Current Location Marker" on).'
+    ja: '「場所を検索」をオンにすると、画面上部に虫眼鏡のボタンが出ます。押して名称の一部(緊急ポイントは ID も)を入力すると、緊急ポイント・ルート・スポット・写真から探し、近い順に並べます。\n' +
+        '選ぶと、その場所までの方角と直線距離を、現在地からの矢印で示します(「現在地点をマーカー表示」をオンにしておきます)。',
+    en: 'Turn on "Find Places" and a magnifier button appears at the top. Press it and type part of a name (or an emergency point ID) to find emergency points, routes, spots and photos, nearest first.\n' +
+        'Choose one and an arrow from your location shows the direction and straight-line distance (keep "Show Current Location Marker" on).'
   },
 
   'guide.mapFinishTitle': { ja: 'マーカーの設定と、画面の戻り方', en: 'Marker Settings and Going Back' },

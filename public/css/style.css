@@ -14,17 +14,15 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
 
-  /* 場所を検索(photo-explore.js)の色。ft-report の探索・案内と同じオレンジ(写真の撮影地点の印
+  /* 場所を検索(place-search.js)の色。ft-report の探索・案内と同じオレンジ(写真の撮影地点の印
      (既定は紺 #000080)・現在地の青丸と見分けやすい)。
      下流のアプリ(ft-report)が自分の CSS で上書きして色を変えられるよう、変数にしておく */
-  --explore-number-color: #ea580c;          /* 番号の印の丸 */
-  --explore-target-number-color: #ea580c;   /* 案内している写真の番号の印の丸 */
-  --explore-target-number-border: #1f2937;  /* 案内している写真の番号の印の縁 */
+  --explore-accent-color: #ea580c;          /* 虫眼鏡のボタンの押した状態の地 */
   --explore-arrow-color: #ef6c00;           /* 矢印の線 */
   --explore-arrow-casing-color: #fff;       /* 矢印の線と矢じりの縁 */
   --explore-arrow-head-color: #ef6c00;      /* 矢じり */
-  --explore-target-row-bg: #fff1e6;         /* 一覧の、案内している写真の行の地 */
-  --explore-target-row-accent: #ea580c;     /* 一覧の、案内している写真の行の左の線 */
+  --explore-target-row-bg: #fff1e6;         /* 一覧の、案内している場所の行の地 */
+  --explore-target-row-accent: #ea580c;     /* 一覧の、案内している場所の行の左の線 */
 }
 
 /* ページ自体の拡大(2本指・ダブルタップ)を止め、縦横のスクロールだけを許す。
@@ -920,24 +918,24 @@ body.view-state-map .leaflet-control-container {
 .btn-explore.is-active,
 .btn-explore.is-active:hover {
   color: #fff;
-  background: var(--explore-number-color);
-  border-color: var(--explore-number-color);
+  background: var(--explore-accent-color);
+  border-color: var(--explore-accent-color);
 }
 
-/* ===== 場所を検索(photo-explore.js。仕様は docs/funcspec-202611.md の 4.12) =====
+/* ===== 場所を検索(place-search.js。仕様は docs/funcspec-202611.md の 4.12) =====
    地図画面(#viewMap)に重ねて出す。#viewMap は pointer-events: none なので、押せる部品ごとに auto にする。
    重なり順は、上部のボタン・≡ のメニュー(500)より下の 400(メニューを開くと一覧より上に出る) */
 
-/* 写真の一覧(左上)。上部のボタンの列(上端 0.75rem・高さ 44px)のすぐ下から始める(≡ のメニューと同じ 64px)。
-   幅は画面の 6 割ほど(広い画面では 22rem まで)、高さは画面の半分まで(それより長いと一覧の中をスクロール) */
+/* 入力欄と検索結果の一覧(左上)。上部のボタンの列(上端 0.75rem・高さ 44px)のすぐ下から始める
+   (≡ のメニューと同じ 64px)。幅は左右の余白を除いた画面の幅(広い画面では 22rem まで)、
+   高さは画面の 6 割まで(それより長いと一覧の中をスクロール) */
 .explore-panel {
   position: absolute;
   top: 64px;
   left: 0.75rem;
   z-index: 400;
-  width: min(60%, 22rem);
-  min-width: 12rem;
-  max-height: 50%;
+  width: min(calc(100% - 1.5rem), 22rem);
+  max-height: 60%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -950,8 +948,7 @@ body.view-state-map .leaflet-control-container {
 .explore-panel[hidden],
 .explore-stack[hidden],
 .explore-info[hidden],
-.explore-list[hidden],
-.explore-empty[hidden] {
+.explore-list[hidden] {
   display: none;
 }
 
@@ -991,25 +988,66 @@ body.view-state-map .leaflet-control-container {
   }
 }
 
+/* 入力欄。文字の大きさは 16px(1rem)未満にしない(iOS が拡大してしまうため。→ input の共通の指定) */
+.explore-search {
+  flex: none;
+  padding: 0.5rem 0.6rem 0.25rem;
+}
+
+.explore-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 1rem;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+}
+
+.explore-input:focus {
+  outline: 2px solid #2c7a3d;
+  outline-offset: -1px;
+  border-color: #2c7a3d;
+}
+
+/* 入力欄と一覧の間の 1 行(探せるものの説明・当たらない・並びの説明・現在地が分からない理由) */
+.explore-note {
+  flex: none;
+  margin: 0;
+  padding: 0.1rem 0.75rem 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.explore-note.is-message {
+  color: #1f5c2c;
+  font-weight: 600;
+}
+
 /* 一覧の中だけをスクロールする(端まで送ったスクロールを地図へ伝えない) */
 .explore-list {
   flex: 1 1 auto;
   min-height: 0;
   margin: 0;
-  padding: 0.2rem 0;
+  padding: 0 0 0.2rem;
   list-style: none;
   overflow-y: auto;
   overscroll-behavior: contain;
+  border-top: 1px solid #e5e7eb;
 }
 
-/* 1 行に 1 枚。左に番号と名前(長い名前は 1 行に収めて「…」で切る)、右に縮小画像 */
+/* 1 件に 1 行。左に番号、中に名前(1 行目)と方角・距離・種類(2 行目)、写真なら右に縮小画像。
+   長い名前は 1 行に収めて「…」で切る */
 .explore-row {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   width: 100%;
+  min-height: 48px;
   padding: 0.25rem 0.5rem 0.25rem 0.6rem;
   border: 0;
+  border-bottom: 1px solid #f3f4f6;
   background: transparent;
   font: inherit;
   color: #111;
@@ -1024,7 +1062,7 @@ body.view-state-map .leaflet-control-container {
   }
 }
 
-/* 案内している写真の行 */
+/* 案内している場所の行 */
 .explore-row.is-target {
   background: var(--explore-target-row-bg);
   box-shadow: inset 4px 0 0 var(--explore-target-row-accent);
@@ -1032,17 +1070,43 @@ body.view-state-map .leaflet-control-container {
 
 .explore-no {
   flex: none;
-  min-width: 1.4em;
+  min-width: 1.6em;
   font-weight: 700;
   color: #2c7a3d;
+  font-variant-numeric: tabular-nums;
 }
 
-.explore-name {
+.explore-main {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.explore-name,
+.explore-sub {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* 2 行目: 方角と距離を先に出し、狭いときは後ろの種類の方を「…」で切る */
+.explore-sub {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.explore-dist {
+  font-weight: 700;
+  color: #111;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-dist:not(:empty)::after {
+  content: '·';
+  margin: 0 0.35em;
+  font-weight: 400;
+  color: #9ca3af;
 }
 
 .explore-thumb {
@@ -1054,16 +1118,16 @@ body.view-state-map .leaflet-control-container {
   background: #e5e7eb;
 }
 
-.explore-empty {
-  margin: 0;
-  padding: 0.8rem;
+/* 上限(20 件)を超えて当たったときの、残りの件数 */
+.explore-more {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
   color: #6b7280;
 }
 
 /* たたんだ一覧(バー)と、そのすぐ下の方角と距離。一覧と同じ左上に縦に並べる。
-   幅は広い方の中身に合わせて 2 つをそろえる。上限は一覧(画面の 6 割)より広く、左右の余白を除いた
-   画面の幅(広い画面では 22rem)までにする。英語の「NW · 12.3 km (straight line)」は幅 320px の画面で
-   約 237px 要り、画面の 6 割(192px)では 2 行に折り返すため */
+   幅は広い方の中身に合わせて 2 つをそろえ、左右の余白を除いた画面の幅(広い画面では 22rem)までにする
+   (英語の「NW · 12.3 km (straight line)」は幅 320px の画面で約 237px 要る) */
 .explore-stack {
   position: absolute;
   top: 64px;
@@ -1120,54 +1184,6 @@ body.view-state-map .leaflet-control-container {
   font-weight: 600;
   line-height: 1.4;
   color: #1f5c2c;
-}
-
-/* 番号の印。要素の大きさを 0 にして、中の丸を撮影地点の真上に置く */
-.leaflet-marker-icon.explore-marker {
-  width: 0 !important;
-  height: 0 !important;
-  background: none;
-  border: 0;
-}
-
-.explore-marker > span {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-50%, -50%);
-  box-sizing: border-box;
-  min-width: 26px;
-  height: 26px;
-  padding: 0 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  color: #fff;
-  background: var(--explore-number-color);
-  border: 2px solid #fff;
-  border-radius: 13px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
-
-/* 指で押しやすいよう、押せる範囲を丸の外まで広げる */
-.explore-marker > span::before {
-  content: '';
-  position: absolute;
-  inset: -8px;
-}
-
-/* 案内している写真の印(大きくして縁取りを付ける。重なり順は photo-explore.js の zIndexOffset) */
-.explore-marker.is-target > span {
-  min-width: 34px;
-  height: 34px;
-  border: 3px solid var(--explore-target-number-border);
-  border-radius: 17px;
-  font-size: 17px;
-  background: var(--explore-target-number-color);
 }
 
 /* 矢印。線の色は Leaflet の color 属性ではなく、ここの stroke で決める(CSS の指定が属性より強い) */

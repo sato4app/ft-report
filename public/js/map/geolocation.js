@@ -5,7 +5,7 @@
 // - 移動経路の記録の開始・停止(startTrackRecording / stopTrackRecording)。記録には現在地の監視が
 //   要るため、監視の制御とあわせてここから行う。経路のデータと描画は track.js が持つ。
 // - 写真の撮影地点(撮影時の位置の取り直し)。写真そのものは photos.js が持ち、経路とは結び付けない。
-// - 現在地を使うほかの機能(場所を検索。photo-explore.js)への、位置と状態の知らせ(addLocationListener)。
+// - 現在地を使うほかの機能(場所を検索。place-search.js)への、位置と状態の知らせ(addLocationListener)。
 //   現在地の監視はここだけが行い、ほかの機能は自分で監視しない(監視は1つで済む)。
 import * as L from 'leaflet';
 import { getMap, ensureMapSize, msSinceMapInteraction, setOnMapInteractionEnd } from './map.js';
