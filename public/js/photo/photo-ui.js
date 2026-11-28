@@ -1,5 +1,5 @@
 // 写真の操作(表示設定パネルの「写真を撮影」とその周り。移動経路の記録とは別の機能)
-// - 「写真を撮影」トグルと、カメラボタン(メニューボタンの左)・写真の表示の「撮影」
+// - 「写真を撮影」トグルと、カメラボタン(メニューボタンの左)・写真の表示の「追加撮影」
 // - 撮影(アプリ内カメラ → 位置の取り直し → 保存)と、その日の最初の撮影での「クリア/追加/中止」の確認
 // - 枚数が上限に近づいたときの警告
 // - パネルの枚数・「未出力あり/出力済み」・KMZ 読み込み・出力・クリア
@@ -46,7 +46,7 @@ const el = {
   photoExportModal: document.getElementById('photoExportModal'),
   photoExportName: document.getElementById('photoExportName'),
   btnPhotoExportSave: document.getElementById('btnPhotoExportSave'),
-  // 写真の表示の「撮影」(写真の表示の上にカメラを開いて追加で撮る)
+  // 写真の表示の「追加撮影」(写真の表示の上にカメラを開いて追加で撮る)
   btnPhotoViewShoot: document.getElementById('btnPhotoViewShoot')
 };
 
@@ -65,7 +65,7 @@ export function bindPhotoEvents() {
   on(el.btnPhotoCamera, 'click', openPhotoCamera);
   // 写真の表示: 地図のカメラの印から開く。枚数・出力済みかどうかが変わったらパネルの表示を更新する
   setPhotoHandlers({ onClick: openPhotoView, onChanged: updatePhotoPanel });
-  // 写真の表示の「撮影」: 写真の表示の上にカメラを開いて追加で撮る(撮った写真は最後に加わり、その表示に替わる)
+  // 写真の表示の「追加撮影」: 写真の表示の上にカメラを開いて追加で撮る(撮った写真は最後に加わり、その表示に替わる)
   on(el.btnPhotoViewShoot, 'click', shootFromPhotoView);
 
   // 写真の読み込み: KMZ ファイルを選び、写真を地図に表示する。経路の記録中でも読み込める
@@ -135,7 +135,7 @@ export function applyPhotoControlsForView(isMapView) {
 }
 
 // カメラボタンの表示: 「写真を撮影」ON のときだけ出す(アプリ内カメラが使えない端末では出さない)
-// 写真の表示の「撮影」も同じ条件で出す(出せないときは「一覧」「戻る」の2つになる)
+// 写真の表示の「追加撮影」も同じ条件で出す(出せないときは「一覧」「戻る」の2つになる)
 function updatePhotoButtonState(enabled) {
   const hidden = !enabled || !isCameraSupported();
   if (el.btnPhotoCamera) el.btnPhotoCamera.hidden = hidden;
@@ -397,7 +397,7 @@ function openPhotoCameraNow() {
   });
 }
 
-// 写真の表示の「撮影」: 入力中の名前を保存し、写真の表示は開いたままカメラを重ねて開く
+// 写真の表示の「追加撮影」: 入力中の名前を保存し、写真の表示は開いたままカメラを重ねて開く
 // (カメラを × で閉じれば元の写真の表示に戻る)。表示中の写真に足して撮るので「クリア/追加」は聞かない
 function shootFromPhotoView() {
   if (el.btnPhotoViewShoot.hidden) return;

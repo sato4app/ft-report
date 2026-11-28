@@ -77,7 +77,7 @@ function formatPhotoTime(ms) {
 }
 
 // 写真の表示を開く(地図のカメラの印・写真の一覧・撮影の直後から)。
-// 既に開いているとき(「撮影」で撮った後)は、入力中の名前を保存してから撮った写真に替える
+// 既に開いているとき(「追加撮影」で撮った後)は、入力中の名前を保存してから撮った写真に替える
 export function openPhotoView(id) {
   if (isPhotoViewOpen()) commitPhotoViewName();
   if (!showPhotoInView(id)) return;

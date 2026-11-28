@@ -272,8 +272,9 @@ const DICT = {
   'photo.deleteFailed': { ja: '写真を削除できませんでした: {message}', en: 'Could not delete the photo: {message}' },
   // 写真の表示の「一覧」と、写真の一覧(タイル状に並べ、押すとその写真を表示する)
   'photo.list': { ja: '一覧', en: 'List' },
-  // 写真の表示の「撮影」(この上にカメラを開いて追加で撮る)
-  'photo.shoot': { ja: '撮影', en: 'Camera' },
+  // 写真の表示の「追加撮影」(この上にカメラを開いて追加で撮る)。開いている写真の撮り直し(差し替え)ではなく、
+  // 写真を足すことがボタンの名前で分かるようにする
+  'photo.shoot': { ja: '追加撮影', en: 'Take More' },
   'photo.listTitle': { ja: '写真の一覧({n} 枚)', en: 'Photos ({n})' },
   'photo.takenAt': { ja: '撮影日時: {time}', en: 'Taken: {time}' },
   'photo.takenAtUnknown': { ja: '撮影日時: 不明', en: 'Taken: unknown' },
