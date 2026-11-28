@@ -7,7 +7,8 @@
 // openExplore() は、どの画面から呼んでも地図画面に切り替えてから開く(ft-report は起動時画面のボタンから呼ぶ)。
 // 更新版の確認は openExplore() の中ではしない(呼ぶ側のボタンが行う)。
 // 現在地は geolocation.js の監視を受け取る(ここでは監視しない。addLocationListener)。
-// 何も保存しない(入力した文字・案内の相手も覚えない)。地図データ・写真は変えない。
+// 端末に保存するのは、選んだ場所の履歴(新しい順に 5 件まで。結果の下に出す)だけ。入力した文字・案内の相手は
+// 覚えない。地図データ・写真は変えない。
 // id・class・i18n のキー・export する関数の名前は、2026.99 からの呼び名 explore を使う
 // (2026.99 は写真の一覧として photo/photo-explore.js に置いた。2026.100 で検索に改め、ここへ移した)。
 import * as L from 'leaflet';
@@ -17,9 +18,11 @@ import {
   addLocationListener, getFreshLatLng, isCurrentMarkerVisible, isLocationUnavailable
 } from './geolocation.js';
 import { closeLayerPanel } from './layer-panel.js';
-import { getPhotos, getPhotoThumbUrl, addPhotosRemovedListener } from '../photo/photos.js';
+import { getPhotos, getPhoto, getPhotoThumbUrl, addPhotosRemovedListener } from '../photo/photos.js';
+import { EXPLORE_HISTORY_KEY } from '../common/config.js';
 import { t, pickLang } from '../common/i18n.js';
 import { showToast } from '../common/messages.js';
+import { readLocalJSON, writeLocalJSON } from '../common/storage.js';
 import { on } from '../common/ui.js';
 import { bearingDegrees, circledNumber } from '../common/utils.js';
 
@@ -27,6 +30,12 @@ import { bearingDegrees, circledNumber } from '../common/utils.js';
 const ARRIVE_METERS = 30;
 // 一覧に出す結果の上限(近い順。番号は ①〜⑳)。それより多いときは、一覧の最後に残りの件数を出す
 const MAX_RESULTS = 20;
+// 選んだ場所の履歴(結果の下に出す)の上限。端末に保存する(EXPLORE_HISTORY_KEY)
+const HISTORY_MAX = 5;
+// 履歴の行の、番号の代わりに出す時計の印(固定の SVG)
+const HISTORY_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">' +
+  '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
+  '<path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 // 入力が止まってから探すまでの待ち(ms)。打つたびに一覧を作り直さないように
 const SEARCH_DELAY_MS = 150;
 // 矢印の線の重なり順(地図の線(overlayPane 400)より上、マーカー(markerPane 600)より下)
@@ -52,11 +61,14 @@ const el = {
   // 表示設定パネルの「場所を検索」と、ON のとき上部に出す虫眼鏡のボタン
   toggle: document.getElementById('toggleExplore'),
   button: document.getElementById('btnExplore'),
-  // 入力欄と結果の一覧(広げた状態)
+  // 入力欄と結果の一覧(広げた状態)。結果の下に、選んだ場所の履歴(同じスクロールの中)
   panel: document.getElementById('explorePanel'),
   input: document.getElementById('exploreInput'),
   note: document.getElementById('exploreNote'),
+  scroll: document.getElementById('exploreScroll'),
   list: document.getElementById('exploreList'),
+  history: document.getElementById('exploreHistory'),
+  historyList: document.getElementById('exploreHistoryList'),
   btnClose: document.getElementById('btnExploreClose'),
   // たたんだ一覧(バー)と、そのすぐ下の方角と距離
   stack: document.getElementById('exploreStack'),
@@ -87,7 +99,8 @@ export function bindExploreEvents({ showMapView }) {
   });
   on(el.btnClose, 'click', closeExplore);
   on(el.bar, 'click', () => setCollapsed(false));
-  on(el.list, 'click', (ev) => {
+  // 結果の行・履歴の行を押す(どちらも同じスクロールの中にある)
+  on(el.scroll, 'click', (ev) => {
     const row = ev.target.closest('.explore-row');
     if (row) selectResult(row.dataset.key);
   });
@@ -144,7 +157,8 @@ export function openExplore() {
     matches: [],            // 当たった場所すべて(近い順。現在地が分からないときは地図データ・写真の順)
     results: [],            // 一覧に出す分(matches の先頭 MAX_RESULTS 件)
     sorted: false,          // matches を現在地から近い順に並べたか
-    target: null,           // 案内している場所(results の要素)
+    history: [],            // 選んだ場所の履歴(新しい順。結果の下に出す。→ loadHistoryItems)
+    target: null,           // 案内している場所(results または history の要素)
     arrived: false,         // 案内している場所について「近くに着きました」を知らせたか
     collapsed: false,
     fix: currentFix(),      // 現在地 [lat, lng](分からないときは null)
@@ -155,6 +169,8 @@ export function openExplore() {
   };
 
   el.input.value = '';
+  ex.history = loadHistoryItems();
+  for (const item of ex.history) measure(item);
   startThumbObserver();
   setCollapsed(false);
   renderGuide();
@@ -176,6 +192,7 @@ export function closeExplore() {
   el.panel.hidden = true;
   el.stack.hidden = true;
   el.list.textContent = '';
+  el.historyList.textContent = '';
   ex = null;
   updateExploreButton();
 }
@@ -245,22 +262,76 @@ function findPlaces(query) {
   const found = [];
   getSearchablePlaces().forEach((p, i) => {
     if (!hit(p.id, p.name, p.englishName)) return;
-    found.push({ key: `${p.type}:${i}`, kind: p.type, label: placeLabel(p), latlngs: p.latlngs, photoId: null });
+    found.push(makeItem({ kind: p.type, id: p.id, name: p.name, englishName: p.englishName, latlngs: p.latlngs }, `${p.type}:${i}`));
   });
   for (const photo of getPhotos()) {
     if (!hit(photo.name)) continue;
-    found.push({
-      key: `photo:${photo.id}`, kind: 'photo', label: photo.name || '',
-      latlngs: [[photo.lat, photo.lng]], photoId: photo.id
-    });
+    found.push(makeItem({ kind: 'photo', name: photo.name, latlngs: [[photo.lat, photo.lng]], photoId: photo.id }, `photo:${photo.id}`));
   }
   return found;
 }
 
-// 一覧に出す名前: 表示言語の名称(英語表示では英語名、無ければ名称)。緊急ポイントは ID を前に付ける
-function placeLabel(p) {
-  const name = pickLang({ ja: p.name || null, en: p.englishName || null }) || p.name || p.englishName;
-  return p.type === 'point' && p.id ? `${p.id} ${name}`.trim() : name;
+// 一覧の 1 件(結果・履歴で共通)。src は { kind, id, name, englishName, latlngs, photoId }(履歴に保存する形)。
+// key は一覧の行の data-key、place はどの場所か(履歴の重なりを除く・案内中の行に印を付けるのに使う)
+function makeItem(src, key) {
+  const place = placeKey(src);
+  return {
+    key: key ?? `h:${place}`, place, kind: src.kind, label: placeLabel(src), latlngs: src.latlngs,
+    photoId: src.photoId || null, src: { ...src, key: place }
+  };
+}
+
+// 場所を見分ける文字列。写真は写真の id、ほかは種類・ID(緊急ポイント)か名称・最初の点の位置
+// (地図データを更新しても変わらないもの。配列の番号は使わない)
+function placeKey(src) {
+  if (src.kind === 'photo') return `photo:${src.photoId}`;
+  const [lat, lng] = src.latlngs[0];
+  return `${src.kind}:${src.id || src.name || src.englishName || ''}@${lat.toFixed(5)},${lng.toFixed(5)}`;
+}
+
+// 一覧に出す名前: 表示言語の名称(英語表示では英語名、無ければ名称)。緊急ポイントは ID を前に付ける。
+// 写真は今の名前(名前を変えていれば合わせる)
+function placeLabel(src) {
+  if (src.kind === 'photo') return (getPhoto(src.photoId)?.name ?? src.name) || '';
+  const name = pickLang({ ja: src.name || null, en: src.englishName || null }) || src.name || src.englishName || '';
+  return src.kind === 'point' && src.id ? `${src.id} ${name}`.trim() : name;
+}
+
+// ===== 選んだ場所の履歴 =====
+// 結果を選んだときに、その場所の写しを新しい順に HISTORY_MAX 件まで端末に保存する(同じ場所は先頭へ移す)。
+// 保存できない環境では、アプリを開いている間だけ覚える。写真が消えたら、その写真の履歴も消す
+let historyRecords = null;
+
+function readHistory() {
+  if (historyRecords) return historyRecords;
+  const saved = readLocalJSON(EXPLORE_HISTORY_KEY);
+  historyRecords = (Array.isArray(saved) ? saved : []).filter(isValidRecord).slice(0, HISTORY_MAX);
+  return historyRecords;
+}
+
+function writeHistory(records) {
+  historyRecords = records;
+  writeLocalJSON(EXPLORE_HISTORY_KEY, records);
+}
+
+function isValidRecord(r) {
+  return !!r && typeof r === 'object' && typeof r.key === 'string' && !!KIND_KEYS[r.kind] &&
+    Array.isArray(r.latlngs) && r.latlngs.length > 0 &&
+    r.latlngs.every((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+}
+
+// 一覧に出す履歴(消えた写真の履歴は出さない)
+function loadHistoryItems() {
+  return readHistory()
+    .filter((r) => r.kind !== 'photo' || getPhoto(r.photoId))
+    .map((r) => makeItem(r));
+}
+
+function rememberChoice(item) {
+  const record = { ...item.src };
+  writeHistory([record, ...readHistory().filter((r) => r.key !== record.key)].slice(0, HISTORY_MAX));
+  ex.history = loadHistoryItems();
+  for (const h of ex.history) measure(h);
 }
 
 // 当たった場所を、現在地が分かっていれば近い順に並べ、先頭 MAX_RESULTS 件に番号を付けて一覧に出す分にする。
@@ -315,7 +386,7 @@ function nearestPoint(from, latlngs) {
 }
 
 // ===== 一覧 =====
-// 縮小画像(写真の結果だけ)は、一覧で見える位置に来た行から読み込む
+// 縮小画像(写真の結果・履歴だけ)は、一覧で見える位置に来た行から読み込む
 function startThumbObserver() {
   if (typeof IntersectionObserver !== 'function') return;
   const observer = new IntersectionObserver((entries) => {
@@ -324,7 +395,7 @@ function startThumbObserver() {
       observer.unobserve(entry.target);
       loadThumb(entry.target);
     }
-  }, { root: el.list, rootMargin: '150px' });
+  }, { root: el.scroll, rootMargin: '150px' });
   ex.thumbObserver = observer;
 }
 
@@ -332,9 +403,10 @@ function loadThumb(img) {
   getPhotoThumbUrl(img.dataset.id).then((url) => { if (url) img.src = url; });
 }
 
-// 一覧を作り直す(番号・名前・方角と距離・種類・縮小画像・案内している場所の印)
+// 一覧を作り直す(番号・名前・方角と距離・種類・縮小画像・案内している場所の印)。
+// 結果の下に、選んだ場所の履歴(新しい順。HISTORY_MAX 件まで)を同じスクロールの中に出す
 function renderList() {
-  const { list } = el;
+  const { list, historyList } = el;
   ex.thumbObserver?.disconnect();
   list.textContent = '';
   for (const item of ex.results) list.appendChild(buildRow(item));
@@ -346,23 +418,27 @@ function renderList() {
     list.appendChild(li);
   }
   list.hidden = list.childElementCount === 0;
+  historyList.textContent = '';
+  for (const item of ex.history) historyList.appendChild(buildRow(item));
+  el.history.hidden = ex.history.length === 0;
   renderNote();
 }
 
-// 1 件の行。左に番号、中に名前(1 行目)と方角・距離・種類(2 行目)、写真なら右に縮小画像
+// 1 件の行。左に番号(履歴は時計の印)、中に名前(1 行目)と方角・距離・種類(2 行目)、写真なら右に縮小画像
 function buildRow(item) {
   const li = document.createElement('li');
   const row = document.createElement('button');
   row.type = 'button';
   row.className = 'explore-row';
   row.dataset.key = item.key;
-  if (item === ex.target) {
+  if (ex.target && item.place === ex.target.place) {
     row.classList.add('is-target');
     row.setAttribute('aria-current', 'true');
   }
   const no = document.createElement('span');
   no.className = 'explore-no';
-  no.textContent = circledNumber(item.no);
+  if (item.no) no.textContent = circledNumber(item.no);
+  else no.innerHTML = HISTORY_ICON;
   const main = document.createElement('span');
   main.className = 'explore-main';
   const name = document.createElement('span');
@@ -437,22 +513,27 @@ function setCollapsed(collapsed) {
   }
 }
 
-// 一覧・バー・知らせに出す「③ 名前」の形
+// バー・知らせに出す「③ 名前」の形(履歴から選んだときは番号を付けない)
 function itemLabel(item) {
-  return `${circledNumber(item.no)} ${item.label}`.trim();
+  return item.no ? `${circledNumber(item.no)} ${item.label}`.trim() : item.label;
 }
 
 // ===== 写真が消えたとき =====
-// 結果から外す。ほかの結果の番号は変えない(欠番になる)。増えた写真は、探し直すまで結果に足さない
+// 結果と履歴から外す(履歴は端末の保存からも消す)。ほかの結果の番号は変えない(欠番になる)。
+// 増えた写真は、探し直すまで結果に足さない
 function onPhotosRemoved(ids) {
-  if (!ex) return;
   const gone = new Set(ids.map((id) => `photo:${id}`));
-  const count = ex.matches.length;
-  ex.matches = ex.matches.filter((m) => !gone.has(m.key));
+  const records = readHistory();
+  const kept = records.filter((r) => !gone.has(r.key));
+  if (kept.length !== records.length) writeHistory(kept);
+  if (!ex) return;
+  const count = ex.matches.length + ex.history.length;
+  ex.matches = ex.matches.filter((m) => !gone.has(m.place));
+  ex.history = ex.history.filter((h) => !gone.has(h.place));
   // 案内している場所は、探し直した後の結果に無いこともあるので別に調べる
-  const targetGone = !!ex.target && gone.has(ex.target.key);
-  if (ex.matches.length === count && !targetGone) return;
-  ex.results = ex.results.filter((r) => !gone.has(r.key));
+  const targetGone = !!ex.target && gone.has(ex.target.place);
+  if (ex.matches.length + ex.history.length === count && !targetGone) return;
+  ex.results = ex.results.filter((r) => !gone.has(r.place));
   if (targetGone) {
     // 案内している写真が消えた: 案内をやめて一覧を広げる
     ex.target = null;
@@ -466,12 +547,13 @@ function onPhotosRemoved(ids) {
 }
 
 // ===== 案内 =====
-// 結果を押したとき。その場所の案内を始め、一覧をたたむ(キーボードも閉じる)。
+// 結果・履歴を押したとき。その場所の案内を始め、履歴の先頭に残して、一覧をたたむ(キーボードも閉じる)。
 // 案内中の場所をもう一度押したときも、選び直したことにする(「近くに着きました」をまた知らせる)
 function selectResult(key) {
   if (!ex) return;
-  const item = ex.results.find((r) => r.key === key);
+  const item = ex.results.find((r) => r.key === key) || ex.history.find((h) => h.key === key);
   if (!item) return;
+  rememberChoice(item);
   ex.target = item;
   ex.arrived = false;
   if (document.activeElement === el.input) el.input.blur();
@@ -562,10 +644,11 @@ function onLocationEvent(event) {
   }
   if (ex.fix && !ex.sorted && ex.matches.length > 0) {
     orderResults();
+    for (const item of ex.history) measure(item);
     renderList();
     if (ex.collapsed) setCollapsed(true);   // バーの番号を合わせる
   } else {
-    for (const item of ex.results) {
+    for (const item of [...ex.results, ...ex.history]) {
       measure(item);
       updateRowDistance(item);
     }

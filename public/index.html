@@ -130,7 +130,14 @@
         <input type="search" class="explore-input" id="exploreInput" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="検索する名称" data-i18n-aria="explore.inputAria" />
       </div>
       <p class="explore-note" id="exploreNote" role="status" aria-live="polite"></p>
-      <ol class="explore-list" id="exploreList" aria-label="検索結果" data-i18n-aria="explore.ariaList"></ol>
+      <!-- 結果の一覧と、その下の選んだ場所の履歴(5 件まで。端末に保存)。2 つをまとめてスクロールする -->
+      <div class="explore-scroll" id="exploreScroll">
+        <ol class="explore-list" id="exploreList" aria-label="検索結果" data-i18n-aria="explore.ariaList"></ol>
+        <section class="explore-history" id="exploreHistory" aria-labelledby="exploreHistoryTitle" hidden>
+          <h3 class="explore-history-title" id="exploreHistoryTitle" data-i18n="explore.historyTitle">最近選んだ場所</h3>
+          <ol class="explore-list" id="exploreHistoryList"></ol>
+        </section>
+      </div>
     </section>
     <div class="explore-stack" id="exploreStack" hidden>
       <button type="button" class="explore-bar" id="exploreBar" aria-expanded="false"></button>

@@ -1025,16 +1025,41 @@ body.view-state-map .leaflet-control-container {
   font-weight: 600;
 }
 
-/* 一覧の中だけをスクロールする(端まで送ったスクロールを地図へ伝えない) */
-.explore-list {
+/* 結果の一覧と履歴をまとめて、この中だけをスクロールする(端まで送ったスクロールを地図へ伝えない) */
+.explore-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  margin: 0;
-  padding: 0 0 0.2rem;
-  list-style: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 1px solid #e5e7eb;
+}
+
+.explore-list {
+  margin: 0;
+  padding: 0 0 0.2rem;
+  list-style: none;
+}
+
+/* 選んだ場所の履歴(結果の下)。見出しで結果と分ける */
+.explore-history[hidden] {
+  display: none;
+}
+
+.explore-history-title {
+  margin: 0;
+  padding: 0.35rem 0.75rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* 履歴の行の時計の印(番号の位置に出す) */
+.explore-no svg {
+  display: block;
+  margin: 0 auto;
+  color: #6b7280;
 }
 
 /* 1 件に 1 行。左に番号、中に名前(1 行目)と方角・距離・種類(2 行目)、写真なら右に縮小画像。

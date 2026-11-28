@@ -346,6 +346,8 @@ const DICT = {
   'explore.inputAria': { ja: '検索する名称', en: 'Name to search for' },
   'explore.placeholder': { ja: '名称・ID で検索', en: 'Search by name or ID' },
   'explore.ariaList': { ja: '検索結果', en: 'Search results' },
+  // 結果の下に出す、選んだ場所の履歴(5 件まで)の見出し
+  'explore.historyTitle': { ja: '最近選んだ場所', en: 'Recent Places' },
   // 入力欄の下の 1 行。入力前は探せるものの説明、当たらなければその旨、当たれば並びの説明
   'explore.hint': {
     ja: '緊急ポイント(ID・名称)・ルート・スポット・写真の名前の一部で探します。',
